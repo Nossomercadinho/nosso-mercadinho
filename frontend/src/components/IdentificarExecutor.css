@@ -1,0 +1,163 @@
+.executor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.executor-modal {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.executor-modal h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.executor-texto {
+  margin: 0 0 22px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.executor-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.executor-campo-linha {
+  display: flex;
+  gap: 10px;
+}
+
+.executor-input {
+  width: 120px;
+  padding: 13px 14px;
+  border: 1px solid #cccccc;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.executor-input:focus {
+  outline: none;
+  border-color: #333333;
+}
+
+.executor-btn-identificar {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.executor-btn-identificar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.executor-identificado {
+  margin-top: 18px;
+  border: 1px solid #d5e9d8;
+  background: #f4fbf5;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.executor-identificado strong {
+  display: block;
+  font-size: 18px;
+}
+
+.executor-identificado div div {
+  margin-top: 3px;
+  color: #666666;
+  font-size: 13px;
+}
+
+.executor-check {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.executor-erro {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fff3f3;
+  border: 1px solid #f1cccc;
+  border-radius: 10px;
+  color: #a92323;
+  font-weight: 600;
+}
+
+.executor-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.executor-btn-cancelar,
+.executor-btn-confirmar {
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.executor-btn-cancelar {
+  border: 1px solid #cccccc;
+  background: #ffffff;
+}
+
+.executor-btn-confirmar {
+  border: 0;
+  background: #171717;
+  color: #ffffff;
+}
+
+.executor-btn-confirmar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .executor-modal {
+    padding: 20px;
+  }
+
+  .executor-campo-linha {
+    flex-direction: column;
+  }
+
+  .executor-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .executor-acoes {
+    flex-direction: column-reverse;
+  }
+
+  .executor-btn-cancelar,
+  .executor-btn-confirmar {
+    width: 100%;
+  }
+}
