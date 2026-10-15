@@ -62,3 +62,5 @@ O [guia de operação e migração](docs/SUPABASE.md) cobre dois caminhos:
 - **Instalação nova:** migrations, seed técnico e `npm run admin:criar` no backend compilado. O comando solicita a senha sem exibi-la, cria o primeiro administrador e sua identificação operacional e recusa bancos que já tenham usuários.
 
 Ative com `DB_CLIENT=postgres`, `DATABASE_URL` privada e TLS verificado somente após preparar e conferir o destino. `DATABASE_URL` sozinha não troca o banco. O frontend continua usando `/api`, e o login e as permissões continuam na API Express. Hospedagem, credenciais remotas e o corte de produção dependem do ambiente de destino.
+
+Para executar a configuração com outro agente que já possui os acessos do Supabase, use o [prompt de execução](docs/PROMPT-SUPABASE.txt).

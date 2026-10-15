@@ -1,0 +1,62 @@
+Configure e coloque em funcionamento o Supabase/PostgreSQL do Nosso Mercadinho usando os dados de acesso e as informações do projeto que você já possui. Execute o trabalho até validar a aplicação conectada ao banco remoto; não entregue apenas um plano.
+
+REPOSITÓRIO E CONTEXTO
+
+Repositório: https://github.com/Nossomercadinho/nosso-mercadinho
+Branch: main.
+Pasta local, se disponível: C:/Users/ferna/Documents/Organization/OneAdvisor/NossoMercadinho
+
+Use a versão mais recente da main, preservando alterações locais. O suporte PostgreSQL já foi implementado e validado localmente: adaptador, migrations, exportador SQLite, criação do primeiro administrador e testes de integração. O próximo trabalho é configurar e validar o projeto Supabase real.
+
+Leia antes de executar:
+- README.md
+- docs/SUPABASE.md
+- supabase/README.md
+- supabase/migrations/
+- supabase/config.toml
+- backend/.env.example
+- backend/package.json
+
+COMO A APLICAÇÃO FUNCIONA
+
+A API Express mantém autenticação JWT, usuários, papéis, permissões e lojas autorizadas. O frontend continua usando /api. Preserve esse desenho e o JWT_SECRET existente. Não substitua o login por Supabase Auth nem conecte o frontend diretamente às tabelas.
+
+As migrations criam 38 tabelas e habilitam RLS. Não existem políticas de acesso pelo navegador; a conexão PostgreSQL do backend precisa usar o proprietário das tabelas ou um papel de servidor com privilégios revisados e BYPASSRLS. Uma chave anon/service_role da Data API não substitui DATABASE_URL.
+
+EXECUÇÃO
+
+1. Identifique e confira o projeto Supabase, o project ref, o banco, o usuário da conexão e o ambiente de destino usando os acessos que já possui. Confira o estado atual do schema, dos dados e do histórico de migrations. Use as credenciais somente em arquivos privados ou no gerenciador de segredos do ambiente. Não mostre senhas, JWT_SECRET ou URLs de conexão completas em logs, chat ou commits.
+
+2. Escolha o caminho de dados conforme o contexto já fornecido. O padrão é preservar a instalação SQLite existente. Se a origem não estiver acessível no seu ambiente, localize um backup/exportação privado disponível; se faltar, solicite somente esse dado indispensável e avance nas verificações independentes. Não trate a ausência do arquivo SQLite em outro computador como autorização para descartar os dados e criar uma instalação nova.
+
+3. Antes do corte da instalação existente, confira expedientes do PDV abertos, preserve um backup consistente e pause as gravações. Não invente valores de fechamento de caixa. Exporte usando o script do projeto, que abre o SQLite somente para leitura:
+   node backend/scripts/export-sqlite-to-postgres.cjs --sqlite CAMINHO_DO_BACKUP --output .local/exports/dados-supabase.sql
+   Preserve o SQLite e o backup. Mantenha a exportação, que contém dados e hashes de senha, fora do Git.
+
+4. Vincule o Supabase CLI ao projeto correto, confira migration list e db push --dry-run e aplique as duas migrations pendentes em ordem. Mantenha o seed automático desabilitado e não inicie a API PostgreSQL antes de concluir a importação ou a preparação dos dados. Não use db reset --linked, DROP, TRUNCATE ou exclusão de dados para forçar a migração. Se o destino contiver uma estrutura incompatível ou dados que conflitem com a importação, preserve-os e resolva o destino antes do corte. Não misture aplicação manual por psql com histórico do CLI sem reconciliá-los. Execute supabase/tests/backend_only.sql para conferir schema, RLS e privilégios; o script termina com ROLLBACK. A opção api.enabled=false de config.toml vale para o ambiente local: confira também a configuração da Data API no painel remoto, mantendo as tabelas da aplicação protegidas.
+
+5. Complete o caminho de dados:
+   - Instalação existente: importe a exportação somente com todas as tabelas da aplicação vazias, conforme docs/SUPABASE.md. Não aplique seed.sql e não execute admin:criar. Preserve IDs, relações, hashes de senha e históricos; confira as quantidades por tabela, saldos por loja e sequências após importar.
+   - Instalação nova, quando esse for o caminho definido: aplique supabase/seed.sql depois das migrations. Compile o backend e execute npm run admin:criar uma única vez, com senha privada sem eco ou via --password-stdin. O comando cria o primeiro administrador e um código operacional de executor; recusa bancos que já tenham usuários. Não crie senhas padrão e não passe senhas em argumentos.
+
+6. Configure exclusivamente no backend ou no ambiente de implantação:
+   DB_CLIENT=postgres
+   DATABASE_URL=conexão privada do projeto
+   PG_SSL=require
+   PG_SSL_CA_FILE=caminho do certificado CA, quando necessário
+   JWT_SECRET=segredo existente preservado
+   PORT=porta correta para o ambiente
+   Use a conexão Direct ou Session conforme o guia e a conectividade disponível. TLS deve validar certificado e hostname. O adaptador ignora parâmetros de consulta da URI; use as variáveis próprias de TLS. Não use PG_SSL=disable remotamente, rejectUnauthorized:false, NODE_TLS_REJECT_UNAUTHORIZED=0 ou variáveis VITE_* com segredos.
+
+7. Instale as dependências, compile e execute a versão atual:
+   Em backend: npm ci; npm run build; npm test; npm start.
+   Em frontend, se precisar gerar a publicação: npm ci; npm run build.
+   O comando de build inclui dist/schema-contract.json. As migrations não são executadas automaticamente pela API. Identifique o processo que realmente atende o frontend e a API: pode existir uma versão SQLite congelada em .local/stable-backend. Troque o processo correto pelo build atual na hora do corte; mudar apenas o .env não reconfigura um processo já iniciado. Preserve as portas e o encaminhamento de /api do ambiente.
+
+8. Valide a conexão remota e a operação: /api consultando o banco, login existente, loja ativa, papéis e bloqueio entre lojas, catálogo/preços/estoque, clientes/fornecedores, financeiro e abertura/venda/baixa de estoque/fechamento/histórico do PDV. Confira que o backend usa PostgreSQL de fato, sem retorno silencioso ao SQLite. Use dados de homologação identificados para testes com gravações e não altere vendas reais. As suítes test:postgres e export-postgres.integration.test.cjs são destinadas a PostgreSQL local descartável e recusam host remoto; nunca aponte seus fixtures para o Supabase de trabalho.
+
+9. Se houver ajustes necessários de código ou documentação, implemente, valide e faça commit e push na branch de trabalho apropriada, sem incluir dados, exportações, certificados privados ou arquivos de ambiente. Não reescreva o histórico remoto. O foco é concluir a configuração existente, preservando os recursos já implementados.
+
+ENTREGA
+
+Informe o projeto configurado sem expor segredos, as migrations aplicadas, o caminho de dados seguido, o resultado das conferências, os endereços da aplicação/API e eventuais commits. Confirme se a aplicação já está efetivamente operando no Supabase. Se faltar acesso, backup ou informação indispensável, diga precisamente o que falta, sem anunciar a migração como concluída.
