@@ -1,3 +1,5 @@
+import { apiFetch } from '../services/apiClient';
+import { useLoja } from '../contexts/LojaContext';
 import { useEffect, useMemo, useState } from 'react';
 
 type Loja = {
@@ -58,13 +60,14 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
 }
 
 export default function Unidades() {
+  const { lojaAtiva } = useLoja();
   const [lojas, setLojas] = useState<Loja[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -87,8 +90,6 @@ export default function Unidades() {
   const [mensagem, setMensagem] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  const [busca, setBusca] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState<'TODAS' | 'MATRIZ' | 'FILIAL'>('TODAS');
 
   const [lojaSelecionada, setLojaSelecionada] = useState<Loja | null>(null);
   const [locais, setLocais] = useState<LocalEstoque[]>([]);
@@ -139,7 +140,7 @@ export default function Unidades() {
         return;
       }
 
-      setLojas(data.lojas || []);
+      setLojas((data.lojas || []).filter((loja: Loja) => loja.id === lojaAtiva?.id));
     } catch (error) {
       console.error(error);
       setMensagem('Não foi possível conectar ao servidor.');
@@ -254,6 +255,7 @@ export default function Unidades() {
       }
 
       await carregarLojas();
+      window.dispatchEvent(new Event('nm:lojas-updated'));
 
       limparFormulario();
       setMostrarFormulario(false);
@@ -303,6 +305,7 @@ export default function Unidades() {
       await carregarLojas();
 
       setMensagem('Unidade desativada com sucesso.');
+      window.dispatchEvent(new Event('nm:lojas-updated'));
     } catch (error) {
       console.error(error);
       setMensagem('Erro ao desativar unidade.');
@@ -744,71 +747,9 @@ export default function Unidades() {
     });
   }, [produtosLocal, buscaProdutoLocal]);
 
-  const lojasFiltradas = useMemo(() => {
-    const termo = busca
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
+  const lojasFiltradas = lojas;
 
-    return lojas.filter((loja) => {
-      if (
-        filtroTipo !== 'TODAS' &&
-        loja.tipo !== filtroTipo
-      ) {
-        return false;
-      }
 
-      if (!termo) {
-        return true;
-      }
-
-      const pesquisa = [
-        loja.nome,
-        loja.codigo,
-        loja.tipo,
-        loja.cnpj,
-        loja.endereco,
-        loja.bairro,
-        loja.cidade,
-        loja.estado,
-        loja.telefone,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-
-      return pesquisa.includes(termo);
-    });
-  }, [lojas, busca, filtroTipo]);
-
-  const indicadores = useMemo(() => {
-    const matriz = lojas.filter(
-      (loja) => loja.tipo === 'MATRIZ'
-    ).length;
-
-    const filiais = lojas.filter(
-      (loja) => loja.tipo === 'FILIAL'
-    ).length;
-
-    const locais = lojas.reduce(
-      (total, loja) =>
-        total +
-        Number(
-          loja.quantidade_locais || 0
-        ),
-      0
-    );
-
-    return {
-      total: lojas.length,
-      matriz,
-      filiais,
-      locais,
-    };
-  }, [lojas]);
 
   return (
     <div className="unidades-page">
@@ -816,7 +757,7 @@ export default function Unidades() {
         <div>
           <h1>Unidades</h1>
           <p>
-            Gerenciamento da Matriz, filiais e locais de estoque.
+            Dados de {lojaAtiva?.nome || 'seu mercado'} e seus locais de estoque.
           </p>
         </div>
 
@@ -1021,123 +962,7 @@ export default function Unidades() {
         </div>
       )}
 
-      <section
-        style={{
-          marginTop: 24,
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(4, minmax(0, 1fr))',
-            gap: 16,
-            marginBottom: 20,
-          }}
-        >
-          {[
-            ['Unidades', indicadores.total],
-            ['Matriz', indicadores.matriz],
-            ['Filiais', indicadores.filiais],
-            ['Locais de estoque', indicadores.locais],
-          ].map(([titulo, valor]) => (
-            <div
-              key={String(titulo)}
-              style={{
-                background: '#fff',
-                border: '1px solid #ececec',
-                borderRadius: 16,
-                padding: 18,
-                boxShadow:
-                  '0 8px 24px rgba(0,0,0,.05)',
-              }}
-            >
-              <span
-                style={{
-                  display: 'block',
-                  color: '#777',
-                  fontSize: 12,
-                  marginBottom: 8,
-                }}
-              >
-                {titulo}
-              </span>
-
-              <strong
-                style={{
-                  fontSize: 28,
-                }}
-              >
-                {valor}
-              </strong>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'minmax(0, 1fr) 220px',
-            gap: 12,
-            alignItems: 'center',
-            marginBottom: 20,
-            background: '#fff',
-            border: '1px solid #ececec',
-            borderRadius: 16,
-            padding: 14,
-          }}
-        >
-          <input
-            type="text"
-            value={busca}
-            onChange={(e) =>
-              setBusca(e.target.value)
-            }
-            placeholder="Pesquisar unidade, código, cidade, CNPJ..."
-            style={{
-              width: '100%',
-              height: 46,
-              padding: '0 14px',
-              border:
-                '1px solid #dedede',
-              borderRadius: 10,
-            }}
-          />
-
-          <select
-            value={filtroTipo}
-            onChange={(e) =>
-              setFiltroTipo(
-                e.target.value as
-                  | 'TODAS'
-                  | 'MATRIZ'
-                  | 'FILIAL'
-              )
-            }
-            style={{
-              width: '100%',
-              height: 46,
-              padding: '0 12px',
-              border:
-                '1px solid #dedede',
-              borderRadius: 10,
-              background: '#fff',
-            }}
-          >
-            <option value="TODAS">
-              Todas as unidades
-            </option>
-
-            <option value="MATRIZ">
-              Matriz
-            </option>
-
-            <option value="FILIAL">
-              Filiais
-            </option>
-          </select>
-        </div>
+      <section className="active-store-management"><p className="active-store-note">{lojaAtiva?.nome} · {lojas[0]?.quantidade_locais || 0} locais de estoque</p>
 
         {carregando ? (
           <div className="unidade-vazia">
@@ -1152,7 +977,7 @@ export default function Unidades() {
             style={{
               display: 'grid',
               gridTemplateColumns:
-                'repeat(2, minmax(0, 1fr))',
+                'minmax(0, 1fr)',
               gap: 18,
             }}
           >
@@ -1785,7 +1610,7 @@ export default function Unidades() {
               </button>
             </div>
 
-            <div
+            <div className="responsive-layout"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -1872,7 +1697,7 @@ export default function Unidades() {
                   Quantidade atual: <strong>{Number(produtoCorrigindo.quantidade || 0)}</strong>
                 </p>
 
-                <div
+                <div className="responsive-layout"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '180px minmax(0, 1fr)',
@@ -1948,23 +1773,18 @@ export default function Unidades() {
                 Nenhum produto encontrado neste local.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                  }}
-                >
+              <div className="management-table-wrap">
+                <table className="mobile-record-table">
                   <thead>
                     <tr style={{ textAlign: 'left' }}>
-                      <th style={{ padding: 10 }}>Produto</th>
-                      <th style={{ padding: 10 }}>Código</th>
-                      <th style={{ padding: 10 }}>Código de barras</th>
-                      <th style={{ padding: 10 }}>Estoque atual</th>
-                      <th style={{ padding: 10 }}>Contagem física</th>
-                      <th style={{ padding: 10 }}>Diferença</th>
-                      <th style={{ padding: 10 }}>Justificativa</th>
-                      <th style={{ padding: 10 }}>Ação</th>
+                      <th scope="col">Produto</th>
+                      <th scope="col">Código</th>
+                      <th scope="col">Código de barras</th>
+                      <th scope="col">Estoque atual</th>
+                      <th scope="col">Contagem física</th>
+                      <th scope="col">Diferença</th>
+                      <th scope="col">Justificativa</th>
+                      <th scope="col">Ações</th>
                     </tr>
                   </thead>
 
@@ -1972,24 +1792,24 @@ export default function Unidades() {
                     {produtosLocalFiltrados.map((item) => (
                       <tr
                         key={`${item.produto_id}-${item.local_id}`}
-                        style={{ borderTop: '1px solid #eee' }}
                       >
-                        <td style={{ padding: 10 }}>
+                        <td data-label="Produto">
                           <strong>{item.produto}</strong>
                         </td>
-                        <td style={{ padding: 10 }}>
+                        <td data-label="Código">
                           {item.codigo_interno || '-'}
                         </td>
-                        <td style={{ padding: 10 }}>
+                        <td data-label="Código de barras">
                           {item.codigo_barras || '-'}
                         </td>
-                        <td style={{ padding: 10 }}>
+                        <td data-label="Estoque atual">
                           <strong>{Number(item.quantidade || 0)}</strong>
                         </td>
 
-                        <td style={{ padding: 10, minWidth: 135 }}>
+                        <td data-label="Contagem física">
                           <input
                             type="number"
+                            aria-label={`Contagem física de ${item.produto}`}
                             min="0"
                             step="0.001"
                             value={valorContagemRapida(item)}
@@ -2010,7 +1830,7 @@ export default function Unidades() {
                           />
                         </td>
 
-                        <td style={{ padding: 10, minWidth: 105 }}>
+                        <td data-label="Diferença">
                           {(() => {
                             const diferenca = diferencaContagemRapida(item);
 
@@ -2040,8 +1860,9 @@ export default function Unidades() {
                           })()}
                         </td>
 
-                        <td style={{ padding: 10, minWidth: 210 }}>
+                        <td data-label="Justificativa">
                           <input
+                            aria-label={`Justificativa da contagem de ${item.produto}`}
                             value={justificativasRapidas[item.produto_id] || ''}
                             onChange={(e) =>
                               setJustificativasRapidas((anterior) => ({
@@ -2060,7 +1881,6 @@ export default function Unidades() {
                             }
                             style={{
                               width: '100%',
-                              minWidth: 190,
                               height: 38,
                               padding: '0 9px',
                               border: '1px solid #dedede',
@@ -2069,14 +1889,8 @@ export default function Unidades() {
                           />
                         </td>
 
-                        <td style={{ padding: 10, minWidth: 210 }}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              gap: 7,
-                              flexWrap: 'wrap',
-                            }}
-                          >
+                        <td data-label="Ações">
+                          <div className="management-table-actions">
                             <button
                               type="button"
                               className="primary-button"

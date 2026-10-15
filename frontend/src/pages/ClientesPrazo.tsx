@@ -1,3 +1,7 @@
+import { apiFetch } from '../services/apiClient';
+import Dialog from '../components/Dialog';
+import { useLoja } from '../contexts/LojaContext';
+import Icon from '../components/Icon';
 import './ClientesPrazo.css';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -65,10 +69,27 @@ function fetchAutenticado(input: RequestInfo | URL, init: RequestInit = {}) {
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  return fetch(input, { ...init, headers });
+  return apiFetch(input, { ...init, headers });
 }
 
 export default function ClientesPrazo() {
+  const { lojaAtiva } = useLoja();
+  const [novoCliente, setNovoCliente] = useState(false);
+  const [cadastro, setCadastro] = useState({ nome: '', cpf: '', telefone: '', limiteCredito: '0' });
+  const [salvandoCadastro, setSalvandoCadastro] = useState(false);
+  const [erroCadastro, setErroCadastro] = useState('');
+
+  async function cadastrarCliente(event: React.FormEvent) {
+    event.preventDefault(); setSalvandoCadastro(true); setErroCadastro('');
+    try {
+      const response = await fetchAutenticado('/api/clientes-prazo', { method: 'POST', body: JSON.stringify({ ...cadastro, limiteCredito: Number(cadastro.limiteCredito) }) });
+      const data = await response.json();
+      if (!response.ok || !data.sucesso) throw new Error(data.erro || 'Não foi possível salvar o cliente.');
+      setNovoCliente(false); setTermo(''); await carregarClientes('');
+      if (data.cliente) await abrirCliente(data.cliente);
+    } catch (error) { setErroCadastro(error instanceof Error ? error.message : 'Não foi possível salvar o cliente.'); }
+    finally { setSalvandoCadastro(false); }
+  }
   const [termo, setTermo] = useState('');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selecionado, setSelecionado] = useState<Cliente | null>(null);
@@ -204,14 +225,14 @@ export default function ClientesPrazo() {
       <header className="cp-header">
         <div>
           <span className="cp-eyebrow">FINANCEIRO</span>
-          <h1>Clientes / A Prazo</h1>
-          <p>Controle de compras fiadas, saldos e recebimentos.</p>
+          <h1>Clientes e crediário</h1>
+          <p>Crédito e recebimentos de {lojaAtiva?.nome || 'sua loja'}.</p>
         </div>
-        <div className="cp-header-total">
+        <div className="cp-header-actions"><button type="button" className="primary-button" onClick={() => { setCadastro({ nome: '', cpf: '', telefone: '', limiteCredito: '0' }); setErroCadastro(''); setNovoCliente(true); }}><Icon name="plus" size={17} />Novo cliente</button><div className="cp-header-total">
           <span>Saldo total em aberto</span>
           <strong>{moeda(totalAberto)}</strong>
           <small>{clientes.length} cliente(s) na consulta</small>
-        </div>
+        </div></div>
       </header>
 
       {erro && <div className="cp-alert">{erro}</div>}
@@ -287,7 +308,7 @@ export default function ClientesPrazo() {
         <main className="cp-content">
           {!selecionado ? (
             <div className="cp-placeholder">
-              <div className="cp-placeholder-icon">👤</div>
+              <div className="cp-placeholder-icon"><Icon name="users" size={26} /></div>
               <h2>Selecione um cliente</h2>
               <p>Escolha um cliente ao lado para visualizar compras e recebimentos.</p>
             </div>
@@ -563,6 +584,14 @@ export default function ClientesPrazo() {
           </div>
         </div>
       )}
+      <Dialog open={novoCliente} title="Novo cliente" close={() => { if (!salvandoCadastro) setNovoCliente(false); }}><form className="cp-register-form" onSubmit={cadastrarCliente}>
+        <p>Cadastro vinculado a <strong>{lojaAtiva?.nome}</strong>. Se o CPF já existir, o cliente será associado a esta loja.</p>
+        <label>Nome completo<input autoFocus required maxLength={120} value={cadastro.nome} onChange={event => setCadastro({ ...cadastro, nome: event.target.value })} /></label>
+        <div className="cp-register-grid"><label>CPF<input required inputMode="numeric" maxLength={14} value={cadastro.cpf} onChange={event => setCadastro({ ...cadastro, cpf: event.target.value })} placeholder="000.000.000-00" /></label><label>Telefone<input required type="tel" maxLength={20} value={cadastro.telefone} onChange={event => setCadastro({ ...cadastro, telefone: event.target.value })} placeholder="(00) 00000-0000" /></label></div>
+        <label>Limite inicial de crédito<input type="number" required min="0" step="0.01" inputMode="decimal" value={cadastro.limiteCredito} onChange={event => setCadastro({ ...cadastro, limiteCredito: event.target.value })} /><small>Zero mantém as vendas a prazo bloqueadas. Para CPF existente, o limite atual é preservado.</small></label>
+        {erroCadastro && <div className="cp-alert" role="alert">{erroCadastro}</div>}
+        <div className="cp-register-actions"><button type="button" className="secondary-button" disabled={salvandoCadastro} onClick={() => setNovoCliente(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={salvandoCadastro}>{salvandoCadastro ? 'Salvando...' : 'Salvar cliente'}</button></div>
+      </form></Dialog>
     </div>
   );
 }

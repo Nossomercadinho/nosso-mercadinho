@@ -1,4 +1,8 @@
+import { comBloqueioBanco } from './caixas.service';
+import { exigirCadastroNaLoja, garantirVinculosCadastros, lojaCadastroAtual } from './cadastros-lojas.service';
+import { buscarFornecedorPorId } from './fornecedores.service';
 import db from '../database/database';
+import { escopoLojaSql } from './escopo-lojas.service';
 
 /*
 |--------------------------------------------------------------------------
@@ -441,6 +445,7 @@ export async function listarCategoriasFinanceiras(
 export async function buscarResumoFornecedorFinanceiro(
   fornecedorId: number
 ) {
+  await buscarFornecedorPorId(fornecedorId);
   const fornecedor =
     await executarGet<any>(
       `
@@ -490,6 +495,7 @@ export async function buscarResumoFornecedorFinanceiro(
           ON l.id = fl.loja_id
 
         WHERE fl.fornecedor_id = ?
+          AND ${escopoLojaSql('fl.loja_id')}
           AND fl.status <> 'CANCELADO'
 
         ORDER BY
@@ -555,6 +561,7 @@ export async function buscarResumoFornecedorFinanceiro(
         FROM financeiro_lancamentos
 
         WHERE fornecedor_id = ?
+          AND ${escopoLojaSql('loja_id')}
       `,
       [fornecedorId]
     );
@@ -574,6 +581,7 @@ export async function buscarResumoFornecedorFinanceiro(
           ON fl.id = fb.lancamento_id
 
         WHERE fl.fornecedor_id = ?
+          AND ${escopoLojaSql('fl.loja_id')}
           AND fl.tipo = 'SAIDA'
           AND fl.status <> 'CANCELADO'
       `,
@@ -627,6 +635,7 @@ export async function verificarPossivelDuplicidade(
   ];
 
   const condicoes: string[] = [
+    escopoLojaSql('fl.loja_id'),
     `fl.tipo = ?`,
     `ROUND(fl.valor_original, 2) = ROUND(?, 2)`,
     `fl.data_vencimento = ?`,
@@ -748,9 +757,12 @@ export async function verificarPossivelDuplicidade(
 |--------------------------------------------------------------------------
 */
 
-export async function criarLancamentoFinanceiro(
+async function criarLancamentoFinanceiroImpl(
   dados: CriarLancamentoPayload
 ) {
+  await garantirVinculosCadastros();
+  dados = { ...dados, lojaId: lojaCadastroAtual(Number(dados.lojaId) || undefined) };
+  if (dados.fornecedorId) await exigirCadastroNaLoja('fornecedor', Number(dados.fornecedorId), Number(dados.lojaId));
   const empresaId =
     dados.empresaId || 1;
 
@@ -1052,6 +1064,7 @@ export async function buscarLancamentoFinanceiroPorId(
             fl.usuario_baixa_id
 
         WHERE fl.id = ?
+          AND ${escopoLojaSql('fl.loja_id')}
 
         LIMIT 1
       `,
@@ -1158,7 +1171,7 @@ export async function listarLancamentosFinanceiros(
   const parametros: any[] = [];
 
   const condicoes: string[] =
-    ['1 = 1'];
+    [escopoLojaSql('fl.loja_id')];
 
   if (filtros.tipo) {
     condicoes.push(
@@ -1386,7 +1399,7 @@ export async function listarLancamentosFinanceiros(
 |--------------------------------------------------------------------------
 */
 
-export async function atualizarLancamentoFinanceiro(
+async function atualizarLancamentoFinanceiroImpl(
   id: number,
   dados: AtualizarLancamentoPayload
 ) {
@@ -1394,6 +1407,8 @@ export async function atualizarLancamentoFinanceiro(
     await buscarLancamentoFinanceiroPorId(
       id
     );
+  if (dados.lojaId && Number(dados.lojaId) !== Number(atual.loja_id)) throw new Error('O mercado de um lançamento existente não pode ser alterado.');
+  if (dados.fornecedorId) await exigirCadastroNaLoja('fornecedor',Number(dados.fornecedorId),Number(atual.loja_id));
 
   if (
     atual.status === 'CANCELADO'
@@ -1603,7 +1618,7 @@ export async function atualizarLancamentoFinanceiro(
 |--------------------------------------------------------------------------
 */
 
-export async function registrarBaixaFinanceira(
+async function registrarBaixaFinanceiraImpl(
   lancamentoId: number,
   dados: RegistrarBaixaPayload
 ) {
@@ -1809,7 +1824,7 @@ export async function registrarBaixaFinanceira(
 |--------------------------------------------------------------------------
 */
 
-export async function cancelarLancamentoFinanceiro(
+async function cancelarLancamentoFinanceiroImpl(
   id: number,
   usuarioId?: number | null,
   motivo?: string | null
@@ -1900,11 +1915,11 @@ export async function obterResumoFinanceiro(
   const parametrosLoja: any[] =
     [];
 
-  let filtroLoja = '';
+  let filtroLoja = `AND ${escopoLojaSql('fl.loja_id')}`;
 
   if (filtros.lojaId) {
-    filtroLoja =
-      'AND fl.loja_id = ?';
+    filtroLoja +=
+      ' AND fl.loja_id = ?';
 
     parametrosLoja.push(
       filtros.lojaId
@@ -2164,11 +2179,11 @@ export async function obterFluxoCaixa(
     filtros.dataFim,
   ];
 
-  let filtroLoja = '';
+  let filtroLoja = `AND ${escopoLojaSql('fl.loja_id')}`;
 
   if (filtros.lojaId) {
-    filtroLoja =
-      'AND fl.loja_id = ?';
+    filtroLoja +=
+      ' AND fl.loja_id = ?';
 
     parametros.push(
       filtros.lojaId
@@ -2327,7 +2342,7 @@ async function garantirTabelaFechamentosCaixa() {
   `);
 }
 
-export async function salvarFechamentoCaixa(
+async function salvarFechamentoCaixaImpl(
   dados: SalvarFechamentoCaixaPayload
 ) {
   await garantirTabelaFechamentosCaixa();
@@ -2522,7 +2537,7 @@ export async function salvarFechamentoCaixa(
 }
 
 
-export async function atualizarFechamentoCaixa(
+async function atualizarFechamentoCaixaImpl(
   lancamentoId: number,
   dados: AtualizarFechamentoCaixaPayload
 ) {
@@ -2575,6 +2590,7 @@ export async function atualizarFechamentoCaixa(
         INNER JOIN lojas l
           ON l.id = fc.loja_id
         WHERE fc.lancamento_id = ?
+          AND ${escopoLojaSql('fc.loja_id')}
         LIMIT 1
       `,
       [id]
@@ -2781,7 +2797,7 @@ export async function listarFechamentosCaixa(
 ) {
   await garantirTabelaFechamentosCaixa();
 
-  const condicoes = ['1 = 1'];
+  const condicoes = [escopoLojaSql('fc.loja_id')];
   const parametros: any[] = [];
 
   if (filtros.lojaId) {
@@ -2815,7 +2831,7 @@ export async function listarFechamentosCaixa(
 |--------------------------------------------------------------------------
 */
 
-export async function excluirLancamentoFinanceiro(
+async function excluirLancamentoFinanceiroImpl(
   id: number,
   usuarioId?: number | null
 ) {
@@ -2868,4 +2884,19 @@ export async function excluirLancamentoFinanceiro(
     throw error;
   }
 }
+
+
+export function criarLancamentoFinanceiro(...args: Parameters<typeof criarLancamentoFinanceiroImpl>) { return comBloqueioBanco(() => criarLancamentoFinanceiroImpl(...args)); }
+
+export function atualizarLancamentoFinanceiro(...args: Parameters<typeof atualizarLancamentoFinanceiroImpl>) { return comBloqueioBanco(() => atualizarLancamentoFinanceiroImpl(...args)); }
+
+export function registrarBaixaFinanceira(...args: Parameters<typeof registrarBaixaFinanceiraImpl>) { return comBloqueioBanco(() => registrarBaixaFinanceiraImpl(...args)); }
+
+export function cancelarLancamentoFinanceiro(...args: Parameters<typeof cancelarLancamentoFinanceiroImpl>) { return comBloqueioBanco(() => cancelarLancamentoFinanceiroImpl(...args)); }
+
+export function salvarFechamentoCaixa(...args: Parameters<typeof salvarFechamentoCaixaImpl>) { return comBloqueioBanco(() => salvarFechamentoCaixaImpl(...args)); }
+
+export function atualizarFechamentoCaixa(...args: Parameters<typeof atualizarFechamentoCaixaImpl>) { return comBloqueioBanco(() => atualizarFechamentoCaixaImpl(...args)); }
+
+export function excluirLancamentoFinanceiro(...args: Parameters<typeof excluirLancamentoFinanceiroImpl>) { return comBloqueioBanco(() => excluirLancamentoFinanceiroImpl(...args)); }
 

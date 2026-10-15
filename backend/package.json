@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "build": "tsc && node scripts/copy-schema-contract.cjs",
+    "start": "node dist/app.js",
+    "test": "node --test --test-concurrency=4 tests/*.test.cjs",
+    "test:postgres": "node --test tests/postgres-runtime.integration.test.cjs tests/primeiro-admin.integration.test.cjs",
+    "admin:criar": "node dist/cli/primeiro-admin.js"
   },
   "keywords": [],
   "author": "",

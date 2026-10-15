@@ -1,3 +1,6 @@
+import { apiFetch } from '../services/apiClient';
+import ResponsiveFilters from '../components/ResponsiveFilters';
+import { useLoja } from '../contexts/LojaContext';
 import {
     useEffect,
   useMemo,
@@ -213,13 +216,15 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
 }
 
 export default function Compras() {
+  const { lojaAtiva } = useLoja();
+  const idLojaAtiva = lojaAtiva ? String(lojaAtiva.id) : '';
   /*
   |--------------------------------------------------------------------------
   | USUÁRIO LOGADO
@@ -313,7 +318,7 @@ export default function Compras() {
   const [
     lojaId,
     setLojaId,
-  ] = useState('');
+  ] = useState(idLojaAtiva);
 
   const [
     localId,
@@ -448,7 +453,7 @@ export default function Compras() {
     try {
       const resposta =
         await fetchAutenticado(
-          `${API}/produtos`
+          `${API}/produtos/loja/catalogo`
         );
 
       const dados =
@@ -628,7 +633,7 @@ export default function Compras() {
     setArquivo(null);
     setXml('');
 
-    setLojaId('');
+    setLojaId(idLojaAtiva);
     setLocalId('');
 
     setLocais([]);
@@ -641,6 +646,7 @@ export default function Compras() {
     setMostrandoImportacao(
       true
     );
+    void carregarLocais(idLojaAtiva);
   }
 
   function fecharImportacao() {
@@ -651,7 +657,7 @@ export default function Compras() {
     setArquivo(null);
     setXml('');
 
-    setLojaId('');
+    setLojaId(idLojaAtiva);
     setLocalId('');
 
     setLocais([]);
@@ -1920,45 +1926,7 @@ export default function Compras() {
                 Unidade de entrada
               </label>
 
-              <select
-                value={lojaId}
-                onChange={(
-                  event
-                ) => {
-                  const valor =
-                    event.target
-                      .value;
-
-                  setLojaId(
-                    valor
-                  );
-
-                  carregarLocais(
-                    valor
-                  );
-                }}
-              >
-                <option value="">
-                  Selecione
-                </option>
-
-                {lojas.map(
-                  (loja) => (
-                    <option
-                      key={
-                        loja.id
-                      }
-                      value={
-                        loja.id
-                      }
-                    >
-                      {
-                        loja.nome
-                      }
-                    </option>
-                  )
-                )}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -2287,25 +2255,25 @@ export default function Compras() {
           </div>
 
           <div className="compra-itens-table-wrap">
-            <table className="compra-itens-table">
+            <table className="compra-itens-table mobile-record-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>
+                  <th scope="col">#</th>
+                  <th scope="col">
                     Produto da NF-e
                   </th>
-                  <th>EAN</th>
-                  <th>NCM</th>
-                  <th>CFOP</th>
-                  <th>Qtd.</th>
-                  <th>
+                  <th scope="col">EAN</th>
+                  <th scope="col">NCM</th>
+                  <th scope="col">CFOP</th>
+                  <th scope="col">Qtd.</th>
+                  <th scope="col">
                     Custo unit.
                   </th>
-                  <th>Total</th>
-                  <th>
+                  <th scope="col">Total</th>
+                  <th scope="col">
                     Produto no sistema
                   </th>
-                  <th>Status</th>
+                  <th scope="col">Status</th>
                 </tr>
               </thead>
 
@@ -2332,13 +2300,13 @@ export default function Compras() {
                           `${indice}-${item.ean}`
                         }
                       >
-                        <td>
+                        <td data-label="#">
                           {obterNumeroItem(
                             item
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Produto da NF-e">
                           <div className="compra-item-produto">
                             <strong>
                               {
@@ -2355,22 +2323,22 @@ export default function Compras() {
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="EAN">
                           {item.ean ||
                             'Sem GTIN'}
                         </td>
 
-                        <td>
+                        <td data-label="NCM">
                           {item.ncm ||
                             '-'}
                         </td>
 
-                        <td>
+                        <td data-label="CFOP">
                           {item.cfop ||
                             '-'}
                         </td>
 
-                        <td>
+                        <td data-label="Qtd.">
                           <strong>
                             {
                               item.quantidade
@@ -2380,7 +2348,7 @@ export default function Compras() {
                             ''}
                         </td>
 
-                        <td>
+                        <td data-label="Custo unit.">
                           {formatarDinheiro(
                             obterValorUnitario(
                               item
@@ -2388,7 +2356,7 @@ export default function Compras() {
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Total">
                           <strong>
                             {formatarDinheiro(
                               obterValorTotal(
@@ -2398,7 +2366,7 @@ export default function Compras() {
                           </strong>
                         </td>
 
-                        <td>
+                        <td data-label="Produto no sistema">
                           {produtoId ? (
                             <div className="produto-vinculado-info">
                               <strong>
@@ -2471,7 +2439,7 @@ export default function Compras() {
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Status">
                           <span
                             className={`compra-vinculo-status ${
                               status ===
@@ -2654,7 +2622,7 @@ export default function Compras() {
 
       {/* FILTROS */}
 
-      <section className="compras-filtros-card">
+      <ResponsiveFilters activeCount={[busca, statusFiltro].filter(Boolean).length} onClear={() => { setBusca(''); setStatusFiltro(''); }}><section className="compras-filtros-card">
         <div className="compras-filtros-header">
           <div>
             <h3>
@@ -2946,7 +2914,7 @@ export default function Compras() {
             </select>
           </div>
         </div>
-      </section>
+      </section></ResponsiveFilters>
 
       <div className="compras-lista-info">
         <span>
@@ -2962,25 +2930,25 @@ export default function Compras() {
       {/* TABELA */}
 
       <div className="compras-table">
-        <table>
+        <table className="mobile-record-table">
           <thead>
             <tr>
-              <th>NF-e</th>
-              <th>
+              <th scope="col">NF-e</th>
+              <th scope="col">
                 Fornecedor
               </th>
-              <th>Emissão</th>
-              <th>Unidade</th>
-              <th>Itens</th>
-              <th>
+              <th scope="col">Emissão</th>
+              <th scope="col">Unidade</th>
+              <th scope="col">Itens</th>
+              <th scope="col">
                 Pendências
               </th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>
+              <th scope="col">Total</th>
+              <th scope="col">Status</th>
+              <th scope="col">
                 Importada em
               </th>
-              <th>Ações</th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
 
@@ -3014,7 +2982,7 @@ export default function Compras() {
                       nota.id
                     }
                   >
-                    <td>
+                    <td data-label="NF-e">
                       <div className="compra-nota-identificacao">
                         <strong>
                           Nº{' '}
@@ -3030,7 +2998,7 @@ export default function Compras() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Fornecedor">
                       <div className="compra-fornecedor-lista">
                         <strong>
                           {
@@ -3046,13 +3014,13 @@ export default function Compras() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Emissão">
                       {formatarData(
                         nota.data_emissao
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Unidade">
                       <div className="compra-unidade-lista">
                         <strong>
                           {nota.loja ||
@@ -3066,14 +3034,14 @@ export default function Compras() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Itens">
                       {Number(
                         nota.quantidade_itens ||
                           0
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Pendências">
                       {Number(
                         nota.itens_pendentes ||
                           0
@@ -3091,7 +3059,7 @@ export default function Compras() {
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Total">
                       <strong>
                         {formatarDinheiro(
                           nota.valor_total
@@ -3099,7 +3067,7 @@ export default function Compras() {
                       </strong>
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                       <span
                         className={`nota-status ${
                           nota.status
@@ -3113,13 +3081,13 @@ export default function Compras() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Importada em">
                       {formatarDataHora(
                         nota.importado_em
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Ações">
                       <button
                         type="button"
                         className="editar-button"

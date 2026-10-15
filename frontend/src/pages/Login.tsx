@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import logo from '../assets/logo.png';
+import Brand from '../components/Brand';
+import Icon from '../components/Icon';
 
 type LoginProps = {
   onLogin: () => void;
@@ -19,6 +20,7 @@ export default function Login({
 }: LoginProps) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] =
     useState(false);
@@ -114,27 +116,18 @@ onLogin();
   return (
     <main className="login-page">
       <section className="login-card">
-        <img
-          src={logo}
-          alt="Nosso Mercadinho"
-          style={{
-            width: '320px',
-            maxWidth: '320px',
-            height: 'auto',
-            objectFit: 'contain',
-          }}
-        />
+        <div className="login-brand"><Brand /></div>
 
-        <h1>Nosso Mercadinho</h1>
+        <h1>Bom ter você por aqui.</h1>
 
         <p className="login-subtitle">
-          Acesse o painel administrativo
+          Entre para acompanhar seu negócio.
         </p>
 
         <form onSubmit={handleSubmit}>
           {erro && (
             <div
-              className="produto-mensagem-geral"
+              className="produto-mensagem-geral" role="alert"
               style={{
                 marginBottom: '15px',
               }}
@@ -157,7 +150,8 @@ onLogin();
                   event.target.value
                 )
               }
-              placeholder="Digite seu e-mail"
+              required
+              placeholder="seu@email.com"
               autoComplete="email"
               disabled={carregando}
             />
@@ -168,9 +162,10 @@ onLogin();
               Senha
             </label>
 
-            <input
+            <div className="password-field"><input
               id="senha"
-              type="password"
+              required
+              type={mostrarSenha ? 'text' : 'password'}
               value={senha}
               onChange={(event) =>
                 setSenha(
@@ -180,7 +175,7 @@ onLogin();
               placeholder="Digite sua senha"
               autoComplete="current-password"
               disabled={carregando}
-            />
+            /><button className="password-toggle" type="button" aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={mostrarSenha} onClick={() => setMostrarSenha(value => !value)}><Icon name="eye" size={18} /></button></div>
           </div>
 
           <button
@@ -193,6 +188,7 @@ onLogin();
               : 'Entrar'}
           </button>
         </form>
+        <p className="login-footnote"><Icon name="shield" size={14} />Acesso restrito à sua equipe</p>
       </section>
     </main>
   );

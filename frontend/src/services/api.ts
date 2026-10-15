@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 const API_URL =
   '';
 
@@ -31,7 +32,7 @@ export async function apiRequest(
     );
   }
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}${endpoint}`,
     {
       ...options,

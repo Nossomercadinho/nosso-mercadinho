@@ -1,5 +1,7 @@
 import db from '../database/database';
 
+export class ErroValidacaoFechamento extends Error {}
+
 function run(sql: string, params: any[] = []) {
   return new Promise<{ lastID: number; changes: number }>((resolve, reject) => {
     db.run(sql, params, function (err) {
@@ -146,6 +148,9 @@ export async function salvarFechamento(dados: any) {
   await garantirEstruturaFechamento();
 
   const atual = await buscarFechamento(dados.dataReferencia, dados.lojaId);
+  if (atual && String(dados.motivoAlteracao || '').trim().length < 5) {
+    throw new ErroValidacaoFechamento('Para alterar um fechamento já salvo, informe um motivo com pelo menos 5 caracteres.');
+  }
   const total = ['dinheiro','pix','debito','credito','aPrazo','outros']
     .reduce((s, k) => s + Number(dados[k] || 0), 0);
   const totalArredondado = Math.round((total + Number.EPSILON) * 100) / 100;

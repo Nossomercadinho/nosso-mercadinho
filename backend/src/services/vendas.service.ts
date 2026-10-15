@@ -1,7 +1,7 @@
 import db from '../database/database';
-
-export const PDV_MATRIZ_LOJA_ID = 1;
-export const PDV_MATRIZ_LOCAL_ID = 1;
+import { garantirEstruturaCaixas, transacaoCaixa } from './caixas.service';
+import { garantirVinculosCadastros, exigirCadastroNaLoja, vincularCadastroNaLoja } from './cadastros-lojas.service';
+import { garantirPrecosCatalogoLoja } from './catalogo-lojas.service';
 
 type ItemVendaEntrada = {
   produtoId: number;
@@ -25,6 +25,7 @@ type CriarVendaPayload = {
   localId: number;
   executorId: number;
   usuarioId: number;
+  caixaSessaoId: number;
   itens: ItemVendaEntrada[];
   pagamentos: PagamentoVendaEntrada[];
   observacao?: string;
@@ -67,25 +68,20 @@ function arredondar(valor: number) {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
 
-async function begin() {
-  await run('BEGIN IMMEDIATE TRANSACTION');
-}
-
-async function commit() {
-  await run('COMMIT');
-}
-
-async function rollback() {
-  try {
-    await run('ROLLBACK');
-  } catch {}
+export function normalizarFormaPagamento(valor: unknown) {
+  return String(valor || '').trim().toUpperCase().replace(/^CARTAO_/, '');
 }
 
 function somenteNumeros(valor: unknown) {
   return String(valor ?? '').replace(/\D/g, '');
 }
 
-async function garantirEstruturaAPrazo() {
+let estruturaPrazo: Promise<void> | undefined;
+function garantirEstruturaAPrazo() {
+  if (!estruturaPrazo) estruturaPrazo = prepararEstruturaAPrazo().catch(error => { estruturaPrazo = undefined; throw error; });
+  return estruturaPrazo;
+}
+async function prepararEstruturaAPrazo() {
   await run(`
     CREATE TABLE IF NOT EXISTS clientes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,10 +140,11 @@ async function garantirEstruturaAPrazo() {
   );
 }
 
-async function obterOuCadastrarClientePrazo(cliente: ClientePrazoEntrada) {
+async function obterOuCadastrarClientePrazo(cliente: ClientePrazoEntrada, lojaId: number) {
   const clienteIdInformado = Number(cliente?.id || 0);
 
   if (clienteIdInformado) {
+    await exigirCadastroNaLoja('cliente', clienteIdInformado, lojaId);
     const existentePorId = await get<any>(
       `SELECT id, nome, cpf, telefone, COALESCE(limite_credito, 0) AS limite_credito, ativo
        FROM clientes
@@ -189,6 +186,7 @@ async function obterOuCadastrarClientePrazo(cliente: ClientePrazoEntrada) {
        WHERE id = ?`,
       [nome, telefone, existente.id]
     );
+    await vincularCadastroNaLoja('cliente', Number(existente.id), lojaId);
     return Number(existente.id);
   }
 
@@ -198,6 +196,7 @@ async function obterOuCadastrarClientePrazo(cliente: ClientePrazoEntrada) {
     [nome, cpf, telefone]
   );
 
+  await vincularCadastroNaLoja('cliente', novo.lastID, lojaId);
   return novo.lastID;
 }
 
@@ -229,6 +228,7 @@ async function obterCreditoClientePrazo(clienteId: number) {
 export async function buscarProdutoPdv(termo: string, lojaId: number, localId: number) {
   const busca = String(termo || '').trim();
   if (!busca) throw new Error('Informe o código de barras ou nome do produto.');
+  await garantirPrecosCatalogoLoja();
 
   const ehEan = /^\d+$/.test(busca);
 
@@ -239,7 +239,7 @@ export async function buscarProdutoPdv(termo: string, lojaId: number, localId: n
         p.ean,
         p.nome,
         p.marca,
-        COALESCE(pl.preco_venda, 0) AS preco_venda,
+        CASE WHEN pl.precos_personalizados = 1 OR pl.preco_venda <> 0 THEN pl.preco_venda ELSE COALESCE(p.preco_venda,0) END AS preco_venda,
         p.unidade_medida,
         COALESCE((
           SELECT SUM(es.quantidade)
@@ -303,6 +303,7 @@ export async function pesquisarProdutosPdv(
 ) {
   const busca = String(termo || '').trim();
   if (busca.length < 2) return [];
+  await garantirPrecosCatalogoLoja();
 
   const max = Math.max(1, Math.min(Number(limite) || 20, 50));
 
@@ -313,7 +314,7 @@ export async function pesquisarProdutosPdv(
         p.ean,
         p.nome,
         p.marca,
-        COALESCE(pl.preco_venda, p.preco_venda, 0) AS preco_venda,
+        CASE WHEN pl.precos_personalizados = 1 OR pl.preco_venda <> 0 THEN pl.preco_venda ELSE COALESCE(p.preco_venda,0) END AS preco_venda,
         p.unidade_medida,
         COALESCE((
           SELECT SUM(es.quantidade)
@@ -342,7 +343,7 @@ export async function pesquisarProdutosPdv(
       lojaId,
       `%${busca}%`,
       `%${busca}%`,
-      `%${busca}%`,
+      /^\d+$/.test(busca) ? `${busca}%` : `%${busca}%`,
       busca,
       max,
     ]
@@ -359,7 +360,8 @@ export async function pesquisarProdutosPdv(
   }));
 }
 
-export async function listarLocaisPdv() {
+export async function listarLocaisPdv(lojaIds: number[]) {
+  if (!lojaIds.length) return [];
   return all(
     `
       SELECT
@@ -373,18 +375,21 @@ export async function listarLocaisPdv() {
       WHERE le.ativo = 1
         AND l.ativo = 1
         AND le.permite_venda = 1
-        AND l.id = ${PDV_MATRIZ_LOJA_ID}
-        AND le.id = ${PDV_MATRIZ_LOCAL_ID}
+        AND l.id IN (${lojaIds.map(() => '?').join(',')})
       ORDER BY l.nome COLLATE NOCASE, le.nome COLLATE NOCASE
-    `
+    `, lojaIds
   );
 }
 
 export async function criarVenda(dados: CriarVendaPayload) {
   await garantirEstruturaAPrazo();
+  await garantirEstruturaCaixas();
+  await garantirVinculosCadastros();
+  await garantirPrecosCatalogoLoja();
 
   if (!dados.usuarioId) throw new Error('Usuário da sessão não identificado.');
   if (!dados.executorId) throw new Error('Executor não identificado.');
+  if (!dados.caixaSessaoId) throw new Error('Abra o caixa antes de registrar uma venda.');
   if (!dados.lojaId || !dados.localId) throw new Error('Loja/local de venda não informado.');
   if (!Array.isArray(dados.itens) || dados.itens.length === 0) {
     throw new Error('A venda precisa ter ao menos um item.');
@@ -412,13 +417,15 @@ export async function criarVenda(dados: CriarVendaPayload) {
   for (const item of dados.itens) {
     const produtoId = Number(item.produtoId);
     const quantidade = numero(item.quantidade);
-    if (!produtoId || quantidade <= 0) throw new Error('Item de venda inválido.');
+    if (!Number.isSafeInteger(produtoId) || produtoId < 1 || quantidade <= 0) throw new Error('Item de venda inválido.');
     agrupados.set(produtoId, (agrupados.get(produtoId) || 0) + quantidade);
   }
 
-  await begin();
-
-  try {
+  return transacaoCaixa(async () => {
+    const sessao = await get<any>(`SELECT id FROM caixas_sessoes WHERE id = ? AND usuario_id = ?
+      AND loja_id = ? AND local_id = ? AND status = 'ABERTO'`,
+      [dados.caixaSessaoId, dados.usuarioId, dados.lojaId, dados.localId]);
+    if (!sessao) throw new Error('O caixa foi encerrado ou não pertence ao operador desta venda.');
     const itensPreparados: any[] = [];
     let total = 0;
 
@@ -429,7 +436,7 @@ export async function criarVenda(dados: CriarVendaPayload) {
             p.id,
             p.ean,
             p.nome,
-            COALESCE(pl.preco_venda, p.preco_venda, 0) AS preco_venda,
+            CASE WHEN pl.precos_personalizados = 1 OR pl.preco_venda <> 0 THEN pl.preco_venda ELSE COALESCE(p.preco_venda,0) END AS preco_venda,
             COALESCE((
               SELECT SUM(es.quantidade)
               FROM estoque_saldos es
@@ -483,11 +490,11 @@ export async function criarVenda(dados: CriarVendaPayload) {
     }
 
     const pagamentos = dados.pagamentos.map((p) => ({
-      forma: String(p.forma || '').trim().toUpperCase(),
+      forma: normalizarFormaPagamento(p.forma),
       valor: arredondar(numero(p.valor)),
     }));
 
-    if (pagamentos.some((p) => !p.forma || p.valor <= 0)) {
+    if (pagamentos.some((p) => !['DINHEIRO', 'PIX', 'DEBITO', 'CREDITO', 'A_PRAZO'].includes(p.forma) || p.valor <= 0)) {
       throw new Error('Pagamento inválido.');
     }
 
@@ -520,7 +527,7 @@ export async function criarVenda(dados: CriarVendaPayload) {
         );
       }
 
-      clienteId = await obterOuCadastrarClientePrazo(dados.cliente);
+      clienteId = await obterOuCadastrarClientePrazo(dados.cliente, dados.lojaId);
     }
 
     if (Math.abs(totalPagamentos - total) > 0.01) {
@@ -556,8 +563,9 @@ export async function criarVenda(dados: CriarVendaPayload) {
           status,
           valor_total,
           observacao,
-          cliente_id
-        ) VALUES (?, ?, ?, ?, 'CONCLUIDA', ?, ?, ?)
+          cliente_id,
+          caixa_sessao_id
+        ) VALUES (?, ?, ?, ?, 'CONCLUIDA', ?, ?, ?, ?)
       `,
       [
         dados.lojaId,
@@ -567,6 +575,7 @@ export async function criarVenda(dados: CriarVendaPayload) {
         total,
         dados.observacao || null,
         clienteId,
+        dados.caixaSessaoId,
       ]
     );
 
@@ -710,8 +719,6 @@ export async function criarVenda(dados: CriarVendaPayload) {
       ]
     );
 
-    await commit();
-
     return {
       sucesso: true,
       vendaId: venda.lastID,
@@ -721,10 +728,7 @@ export async function criarVenda(dados: CriarVendaPayload) {
         0
       ),
     };
-  } catch (error) {
-    await rollback();
-    throw error;
-  }
+  });
 }
 
 export async function buscarVendaPorId(id: number) {
@@ -733,6 +737,7 @@ export async function buscarVendaPorId(id: number) {
       SELECT
         v.id,
         v.loja_id,
+        v.usuario_id,
         l.nome AS loja,
         v.local_id,
         le.nome AS local,

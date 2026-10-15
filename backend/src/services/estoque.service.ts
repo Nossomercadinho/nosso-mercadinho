@@ -1,4 +1,7 @@
 import db from '../database/database';
+import { escopoLojaSql, obterLojaAtivaId } from './escopo-lojas.service';
+import { garantirPrecosCatalogoLoja, garantirVinculoEstoque } from './catalogo-lojas.service';
+import { transacaoCaixa } from './caixas.service';
 
 /*
 |--------------------------------------------------------------------------
@@ -478,7 +481,7 @@ async function registrarMovimentacao(
 |--------------------------------------------------------------------------
 */
 
-export async function entradaEstoque(
+async function entradaEstoqueImpl(
   dados: {
     produtoId: number;
 
@@ -652,7 +655,7 @@ export async function entradaEstoque(
 |--------------------------------------------------------------------------
 */
 
-export async function saidaEstoque(
+async function saidaEstoqueImpl(
   dados: {
     produtoId: number;
 
@@ -808,7 +811,7 @@ export async function saidaEstoque(
 |
 */
 
-export async function transferirEstoque(
+async function transferirEstoqueImpl(
   dados: {
     produtoId: number;
 
@@ -1073,7 +1076,7 @@ export async function transferirEstoque(
 |--------------------------------------------------------------------------
 */
 
-export async function novaContagem(
+async function novaContagemImpl(
   dados: {
     produtoId: number;
 
@@ -1250,6 +1253,49 @@ export async function novaContagem(
 |--------------------------------------------------------------------------
 */
 
+async function validarLocalEstoque(lojaId: number, localId: number) {
+  if (!Number.isSafeInteger(lojaId) || !Number.isSafeInteger(localId) || lojaId <= 0 || localId <= 0) throw new Error('Informe o mercado e o local de estoque.');
+  const local = await executarGet(`SELECT le.id FROM locais_estoque le JOIN lojas l ON l.id=le.loja_id
+    WHERE le.id=? AND le.loja_id=? AND le.ativo=1 AND l.ativo=1`, [localId,lojaId]);
+  if (!local) throw new Error('O local de estoque não está ativo neste mercado.');
+}
+
+export async function entradaEstoque(dados: Parameters<typeof entradaEstoqueImpl>[0]) {
+  await garantirPrecosCatalogoLoja();
+  return transacaoCaixa(async () => {
+    await validarLocalEstoque(dados.lojaId,dados.localId);
+    const resultado = await entradaEstoqueImpl(dados);
+    await garantirVinculoEstoque(dados.produtoId,dados.lojaId);
+    return resultado;
+  });
+}
+export async function saidaEstoque(dados: Parameters<typeof saidaEstoqueImpl>[0]) {
+  await garantirPrecosCatalogoLoja();
+  return transacaoCaixa(async () => {
+    await validarLocalEstoque(dados.lojaId,dados.localId);
+    return saidaEstoqueImpl(dados);
+  });
+}
+export async function transferirEstoque(dados: Parameters<typeof transferirEstoqueImpl>[0]) {
+  await garantirPrecosCatalogoLoja();
+  return transacaoCaixa(async () => {
+    await validarLocalEstoque(dados.lojaOrigemId,dados.localOrigemId);
+    await validarLocalEstoque(dados.lojaDestinoId,dados.localDestinoId);
+    const resultado = await transferirEstoqueImpl(dados);
+    await garantirVinculoEstoque(dados.produtoId,dados.lojaDestinoId);
+    return resultado;
+  });
+}
+export async function novaContagem(dados: Parameters<typeof novaContagemImpl>[0]) {
+  await garantirPrecosCatalogoLoja();
+  return transacaoCaixa(async () => {
+    await validarLocalEstoque(dados.lojaId,dados.localId);
+    const resultado = await novaContagemImpl(dados);
+    if (normalizarNumero(dados.quantidadeContada) > 0) await garantirVinculoEstoque(dados.produtoId,dados.lojaId);
+    return resultado;
+  });
+}
+
 export async function consultarSaldosProduto(
   produtoId: number
 ) {
@@ -1302,6 +1348,8 @@ export async function consultarSaldosProduto(
 
       WHERE
         es.produto_id = ?
+
+        AND ${escopoLojaSql('es.loja_id')}
 
         AND p.ativo = 1
         AND l.ativo = 1
@@ -1399,6 +1447,7 @@ export async function consultarEstoque(
       AND l.ativo = 1
 
       AND le.ativo = 1
+      AND ${escopoLojaSql('es.loja_id')}
   `;
 
   const parametros:
@@ -1459,6 +1508,7 @@ export async function consultarMovimentacoes(
   produtoId?: number,
   limite = 100
 ) {
+  const lojaAtivaId = obterLojaAtivaId();
   let sql = `
     SELECT
       me.id,
@@ -1548,6 +1598,9 @@ export async function consultarMovimentacoes(
         me.usuario_id
 
     WHERE 1 = 1
+      AND ${lojaAtivaId
+        ? `(me.loja_origem_id = ${lojaAtivaId} OR me.loja_destino_id = ${lojaAtivaId})`
+        : `(me.loja_origem_id IS NULL OR ${escopoLojaSql('me.loja_origem_id')}) AND (me.loja_destino_id IS NULL OR ${escopoLojaSql('me.loja_destino_id')})`}
   `;
 
   const parametros:

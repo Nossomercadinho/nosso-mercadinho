@@ -1,4 +1,5 @@
 import db from '../database/database';
+import { comBloqueioBanco } from './caixas.service';
 
 export type ExecutorValidado = {
   id: number;
@@ -131,7 +132,7 @@ export async function validarExecutor(
 |--------------------------------------------------------------------------
 */
 
-export async function registrarAuditoria(
+async function registrarAuditoriaImpl(
   dados: RegistrarAuditoriaPayload
 ) {
   if (!dados.executorId) {
@@ -236,3 +237,5 @@ export async function validarERegistrarAuditoria(
     executor,
   };
 }
+
+export function registrarAuditoria(...args: Parameters<typeof registrarAuditoriaImpl>) { return comBloqueioBanco(() => registrarAuditoriaImpl(...args)); }

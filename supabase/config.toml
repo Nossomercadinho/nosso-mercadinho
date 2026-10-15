@@ -1,0 +1,16 @@
+# Local project label; the remote project is chosen explicitly with supabase link.
+project_id = "nosso-mercadinho"
+
+# The application uses Express + DATABASE_URL, without the local Data API.
+# Remote Data API settings are managed separately in the project dashboard.
+[api]
+enabled = false
+
+[db.migrations]
+enabled = true
+
+# Existing installations import SQLite data after applying the migrations.
+# Run seed.sql manually only when creating a completely new installation.
+[db.seed]
+enabled = false
+sql_paths = []

@@ -1,0 +1,236 @@
+/* Shared management lists. Mobile record layout stays in system.css. */
+.app-content {
+  --list-border:#e3e8ee;
+  --list-header:#f8fafc;
+  --list-text:#536176;
+  --list-muted:#8b97a7;
+}
+.management-header-actions { display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px; }
+.active-store-note { color:#7e8b9d;font-size:11px;line-height:1.5;margin:0 0 14px; }
+.app-content input[readonly] { background:#f7f9fc;border-color:#e3e8ef;color:#758297;cursor:default; }
+.app-content :is(.produtos-table,.compras-table,.fornecedores-table,.historico-table-wrap,.historico-table-wrapper,.financeiro-tabela,.compra-itens-table-wrap,.management-table-wrap) {
+  border:1px solid var(--list-border);
+  border-radius:10px;
+  background:#fff;
+  box-shadow:none;
+  overflow-x:auto;
+  margin-top:0;
+}
+.app-content table.mobile-record-table {
+  width:100%;
+  border-collapse:collapse;
+  border-spacing:0;
+  background:#fff;
+  color:var(--list-text);
+  font-family:inherit;
+  font-size:12px;
+  line-height:1.5;
+}
+.app-content .financeiro-tabela>table.mobile-record-table { min-width:960px; }
+.app-content table.mobile-record-table > thead {
+  background:var(--list-header);
+}
+.app-content table.mobile-record-table > thead > tr > th {
+  background:var(--list-header);
+  color:#7c899a;
+  font-family:inherit;
+  font-size:10px;
+  font-weight:600;
+  line-height:1.5;
+  letter-spacing:0;
+  text-transform:none;
+  text-align:left;
+  white-space:nowrap;
+  border:0;
+  border-bottom:1px solid var(--list-border);
+}
+.app-content table.mobile-record-table > tbody > tr > td {
+  border:0;
+  border-bottom:1px solid #edf0f4;
+  vertical-align:middle;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--list-text);
+  text-align:left;
+}
+.app-content table.mobile-record-table > tbody > tr:last-child > td {
+  border-bottom:0;
+}
+.app-content table.mobile-record-table > tbody > tr:hover {
+  background:#fbfcfe;
+}
+.app-content table.mobile-record-table td strong {
+  color:#39485c;
+  font-size:12px;
+  line-height:1.5;
+  font-weight:600;
+}
+.app-content table.mobile-record-table td small {
+  color:var(--list-muted);
+  font-size:10px;
+  line-height:1.5;
+}
+.app-content table.mobile-record-table :is(.produto-tabela-textos,.fornecedor-identificacao>div,.fornecedor-contato,.fornecedor-localizacao,.compra-item-produto,.produto-vinculado-info,.historico-produto) {
+  gap:4px;
+}
+.app-content table.mobile-record-table :is(.produto-tabela-textos,.fornecedor-identificacao>div,.fornecedor-contato,.fornecedor-localizacao,.compra-item-produto,.produto-vinculado-info,.historico-produto)>span,
+.app-content table.mobile-record-table .table-secondary-text {
+  font-size:10px;
+  font-weight:400;
+  color:var(--list-muted);
+  line-height:1.5;
+}
+.app-content table.mobile-record-table :is(.produto-tabela-imagem,.fornecedor-avatar) {
+  width:36px;
+  height:36px;
+  min-width:36px;
+  border-radius:8px;
+  box-shadow:none;
+}
+.app-content table.mobile-record-table .produto-tabela-imagem img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+.app-content table.mobile-record-table :is(.produto-tabela-info,.fornecedor-identificacao) {
+  gap:10px;
+}
+.app-content table.mobile-record-table :is(.produto-categoria-badge,.produto-status-badge,.fornecedor-status,.financeiro-status,.financeiro-tipo-badge,.fornecedor-numero-badge,.nota-status,.estoque-situacao-badge,.local-badge,.historico-badge,.nota-pendencias-badge,.compra-vinculo-status) {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  min-width:0;
+  padding:4px 7px;
+  border-radius:5px;
+  box-shadow:none;
+  font-size:10px;
+  font-weight:550;
+  line-height:1.3;
+  white-space:nowrap;
+}
+.app-content table.mobile-record-table :is(.produto-categoria-badge,.fornecedor-numero-badge) {
+  color:#78869a;
+  background:#f2f5f8;
+  border-color:#e6ebf1;
+}
+.app-content table.mobile-record-table .financeiro-tipo-badge.entrada { color:#328454;background:#edf8f1; }
+.app-content table.mobile-record-table .financeiro-tipo-badge.saida { color:#c45852;background:#fdf0ef; }
+.app-content table.mobile-record-table .financeiro-tipo-badge .financeiro-tipo-seta {
+  width:auto;
+  height:auto;
+  background:transparent;
+  border-radius:0;
+  color:inherit;
+  font-size:12px;
+}
+.app-content table.mobile-record-table :is(.produto-preco,.produto-margem,.fornecedor-documento,.fornecedor-prazo) {
+  font-size:11px;
+  line-height:1.5;
+  font-weight:500;
+}
+.app-content table.mobile-record-table :is(.acoes-produto,.fornecedor-acoes,.compra-acoes,.financeiro-acoes-linha,.management-table-actions) {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:6px;
+}
+.app-content table.mobile-record-table td[data-label="Ações"] button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  width:auto;
+  min-width:30px;
+  min-height:30px;
+  height:auto;
+  padding:6px 9px;
+  border-radius:6px;
+  box-shadow:none;
+  font-size:10px;
+  font-weight:550;
+  line-height:1.4;
+  white-space:nowrap;
+}
+.app-content table.mobile-record-table :is(.editar-button,.fornecedor-editar,.financeiro-btn-edit,.financeiro-btn-baixa) {
+  background:#fff;
+  border:1px solid #e0e6ed;
+  color:#6d7b8f;
+}
+.app-content table.mobile-record-table :is(.excluir-button,.fornecedor-excluir,.financeiro-btn-delete,.financeiro-btn-excluir,.desativar-button) {
+  background:#fff;
+  border:1px solid #f0d6d5;
+  color:#c66760;
+}
+.app-content table.mobile-record-table :is(.editar-button,.fornecedor-editar,.financeiro-btn-edit,.financeiro-btn-baixa):hover {
+  color:#b86427;
+  border-color:#edc4a6;
+  background:#fffbf7;
+}
+.app-content table.mobile-record-table :is(.excluir-button,.fornecedor-excluir,.financeiro-btn-delete,.financeiro-btn-excluir,.desativar-button):hover {
+  background:#fff3f2;
+}
+/* Entry and expense indicators stay in their badges and amount colors. */
+.app-content table.mobile-record-table > tbody > tr:is(.financeiro-linha-entrada,.financeiro-linha-saida) {
+  background-color:#fff;
+  border-left:0;
+}
+.app-content table.mobile-record-table > tbody > tr:is(.financeiro-linha-entrada,.financeiro-linha-saida):hover {
+  background-color:#fbfcfe;
+}
+.app-content table.mobile-record-table td[colspan] {
+  color:var(--list-muted);
+  font-size:12px;
+  font-weight:400;
+  line-height:1.6;
+  text-align:center;
+  background:#fff;
+}
+@media(min-width:901px) {
+  .app-content table.mobile-record-table > thead > tr > th {
+    padding:12px 14px;
+    border-bottom:1px solid var(--list-border);
+  }
+  .app-content table.mobile-record-table > tbody > tr > td {
+    padding:14px;
+  }
+  .app-content table.mobile-record-table > tbody > tr > td[colspan] {
+    padding:42px 18px !important;
+  }
+}
+@media(max-width:900px) {
+  .management-header-actions { justify-content:flex-start;width:100%; }
+  .management-header-actions>button { flex:1; }
+  .app-content :is(.produtos-table,.compras-table,.fornecedores-table,.historico-table-wrap,.historico-table-wrapper,.financeiro-tabela,.compra-itens-table-wrap,.management-table-wrap) {
+    overflow:hidden;
+  }
+  .app-content table.mobile-record-table {
+    background:transparent;
+  }
+  .app-content table.mobile-record-table > tbody > tr {
+    border-left:0;
+    border-bottom:1px solid var(--list-border);
+  }
+  .app-content table.mobile-record-table > tbody > tr:last-child {
+    border-bottom:0;
+  }
+  .app-content table.mobile-record-table > tbody > tr > td {
+    font-size:12px;
+    border-bottom:0;
+    line-height:1.5;
+  }
+  .app-content table.mobile-record-table :is(.acoes-produto,.fornecedor-acoes,.compra-acoes,.financeiro-acoes-linha,.management-table-actions) {
+    flex-wrap:wrap;
+    padding-top:4px;
+    gap:7px;
+  }
+  .app-content table.mobile-record-table td[data-label="Ações"] button {
+    min-height:36px;
+    flex:1;
+    font-size:11px;
+  }
+  .app-content table.mobile-record-table td:is([data-label="Produto da NF-e"],[data-label="Produto no sistema"],[data-label="Produto / EAN"],[data-label="Justificativa"]) { grid-column:1/-1; }
+  .app-content table.mobile-record-table td[data-label="Produto da NF-e"]::before,.app-content table.mobile-record-table td[data-label="Produto / EAN"]::before { display:none; }
+  .app-content table.mobile-record-table :is(.compra-item-produto,.produto-vinculado-info,.historico-produto) { min-width:0;max-width:100%; }
+  .app-content table.mobile-record-table :is(input,select) { width:100%;max-width:100%;min-width:0;font-size:16px; }
+}

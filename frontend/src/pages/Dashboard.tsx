@@ -1,10 +1,13 @@
+import { apiFetch } from '../services/apiClient';
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
-import logo from '../assets/logo.png';
+import AppShell from '../components/AppShell';
+import Icon from '../components/Icon';
 
 import Produtos from './Produtos';
 import Unidades from './Unidades';
@@ -16,6 +19,14 @@ import PDV from './PDV';
 import ClientesPrazo from './ClientesPrazo';
 import Vendas from './Vendas';
 import FechamentoDiario from './FechamentoDiario';
+import Usuarios from './Usuarios';
+import { useLoja } from '../contexts/LojaContext';
+import HistoricoCaixas from './HistoricoCaixas';
+
+function decodePageHash() {
+  try { return decodeURIComponent(window.location.hash.slice(1)) || 'Visão Geral'; }
+  catch { return 'Visão Geral'; }
+}
 
 const API =
   '/api';
@@ -25,6 +36,8 @@ type UsuarioLogado = {
   nome: string;
   email: string;
   perfil: string;
+  papelNome?: string;
+  permissoes?: string[];
 };
 
 type ResumoFinanceiro = {
@@ -108,7 +121,7 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
@@ -118,48 +131,37 @@ export default function Dashboard({
   onLogout,
   modoPdvDireto = false,
 }: DashboardProps) {
-  const usuario =
-    useMemo<UsuarioLogado | null>(
-      () => {
-        try {
-          const salvo =
-            localStorage.getItem(
-              'usuarioLogado'
-            );
+  const { lojaAtiva, carregando: carregandoLoja, erro: erroLoja, atualizarLojas } = useLoja();
+  const [usuario, setUsuario] = useState<UsuarioLogado | null>(() => {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch { return null; }
+  });
+  const perfil = String(usuario?.perfil || '').toUpperCase();
+  const permissoes = usuario?.permissoes || [];
+  const podeFinanceiro = permissoes.includes('financeiro');
+  const resumoVersion = useRef(0);
 
-          return salvo
-            ? JSON.parse(
-                salvo
-              )
-            : null;
-        } catch {
-          return null;
-        }
-      },
-      []
-    );
-
-  const perfil =
-    String(
-      usuario?.perfil || ''
-    ).toUpperCase();
-
-  const acessoTotal =
-    perfil ===
-      'ADMINISTRADOR' ||
-    perfil === 'CEO';
-
-  const operador =
-    perfil === 'OPERADOR';
-
-  const caixa =
-    perfil === 'CAIXA';
+  useEffect(() => {
+    let disposed = false;
+    async function refresh() {
+      try {
+        const response = await fetchAutenticado('/api/auth/me');
+        const data = await response.json();
+        if (disposed) return;
+        if (!response.ok || !data.usuario) { fazerLogout(); return; }
+        localStorage.setItem('usuarioLogado', JSON.stringify(data.usuario));
+        setUsuario(data.usuario);
+      } catch { /* A próxima requisição permite tentar novamente após falha de conexão. */ }
+    }
+    window.addEventListener('focus', refresh);
+    window.addEventListener('nm:access-updated', refresh);
+    return () => { disposed = true; window.removeEventListener('focus', refresh); window.removeEventListener('nm:access-updated', refresh); };
+  }, []);
 
   const [
     paginaAtiva,
     setPaginaAtiva,
   ] = useState(
-    modoPdvDireto ? 'PDV' : 'Visão Geral'
+    modoPdvDireto ? 'PDV' : decodePageHash()
   );
 
   const [
@@ -180,61 +182,18 @@ export default function Dashboard({
     setErroFinanceiro,
   ] = useState('');
 
-  const menuItems =
-    useMemo(() => {
-      if (acessoTotal) {
-        return [
-          'Visão Geral',
-          'Produtos',
-          'Estoque',
-          'Compras',
-          'Financeiro',
-          'Contas / Boletos',
-          'Clientes / A Prazo',
-          'Vendas',
-          'Fiscal',
-          'Fornecedores',
-          'Unidades',
-        ];
-      }
+  const menuItems = useMemo(() => {
+    const modules: [string, string[]][] = [
+      ['Visão Geral', ['visao']], ['Produtos', ['produtos']], ['Estoque', ['estoque']],
+      ['Compras', ['compras']], ['Financeiro', ['financeiro']], ['Contas / Boletos', ['contas']],
+      ['Clientes / A Prazo', ['clientes']], ['Vendas', ['vendas']], ['Fiscal', ['fiscal']],
+      ['Fornecedores', ['fornecedores']], ['Unidades', ['unidades']], ['Fechamento Diário', ['fechamento']],
+      ['Histórico do caixa', ['caixas','pdv']], ['Usuários e papéis', ['usuarios']], ['PDV', ['pdv']],
+    ];
+    return modules.filter(([, codes]) => codes.some(code => usuario?.permissoes?.includes(code))).map(([label]) => label);
+  }, [usuario]);
 
-      if (operador) {
-        return [
-          'Visão Geral',
-          'Produtos',
-          'Estoque',
-          'Compras',
-          'Contas / Boletos',
-          'Fornecedores',
-          'Unidades',
-        ];
-      }
-
-      if (caixa) {
-        return [
-          'Visão Geral',
-          'Vendas',
-          'Estoque',
-          'Transferências',
-          'Fechamento Diário',
-          'PDV',
-        ];
-      }
-
-      return [
-        'Visão Geral',
-      ];
-    }, [
-      acessoTotal,
-      operador,
-      caixa,
-    ]);
-
-  useEffect(() => {
-    if (acessoTotal) {
-      carregarResumoFinanceiro();
-    }
-  }, [acessoTotal]);
+  useEffect(() => { if (podeFinanceiro && lojaAtiva) void carregarResumoFinanceiro(); else setResumoFinanceiro(resumoVazio); }, [podeFinanceiro, lojaAtiva?.id]);
 
   useEffect(() => {
     if (modoPdvDireto) {
@@ -249,9 +208,7 @@ export default function Dashboard({
         paginaAtiva
       )
     ) {
-      setPaginaAtiva(
-        'Visão Geral'
-      );
+      setPaginaAtiva(menuItems[0] || 'Sem acesso');
     }
   }, [
     menuItems,
@@ -259,7 +216,19 @@ export default function Dashboard({
     modoPdvDireto,
   ]);
 
+  function navegar(page: string) {
+    setPaginaAtiva(page);
+    window.location.hash = encodeURIComponent(page);
+  }
+
+  useEffect(() => {
+    const update = () => setPaginaAtiva(decodePageHash());
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+
   async function carregarResumoFinanceiro() {
+    const version = ++resumoVersion.current;
     setCarregandoFinanceiro(
       true
     );
@@ -273,6 +242,7 @@ export default function Dashboard({
 
       const dados =
         await resposta.json();
+      if (version !== resumoVersion.current) return;
 
       if (
         !resposta.ok ||
@@ -290,12 +260,13 @@ export default function Dashboard({
           {}),
       });
     } catch (error: any) {
+      if (version !== resumoVersion.current) return;
       setErroFinanceiro(
         error?.message ||
           'Não foi possível carregar os indicadores financeiros.'
       );
     } finally {
-      setCarregandoFinanceiro(
+      if (version === resumoVersion.current) setCarregandoFinanceiro(
         false
       );
     }
@@ -426,12 +397,14 @@ export default function Dashboard({
       <>
         <div className="page-header">
           <div>
-            <h1>Visão Geral</h1>
-            <p>Bem-vindo ao painel do Nosso Mercadinho.</p>
+            <span className="page-kicker">PAINEL DO NEGÓCIO</span>
+            <h1>Visão geral</h1>
+            <p>Seu mercadinho, acompanhado de perto.</p>
           </div>
+          <span className="overview-date"><Icon name="calendar" size={17} />{new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
         </div>
 
-        {acessoTotal && (
+        {podeFinanceiro && (
           <section className="overview-financeiro">
             <div className="overview-topo">
               <div>
@@ -446,12 +419,12 @@ export default function Dashboard({
                 onClick={carregarResumoFinanceiro}
                 disabled={carregandoFinanceiro}
               >
-                {carregandoFinanceiro ? 'Atualizando...' : '↻ Atualizar'}
+                <Icon name="refresh" size={16} />{carregandoFinanceiro ? 'Atualizando...' : 'Atualizar'}
               </button>
             </div>
 
             {erroFinanceiro && (
-              <div className="overview-erro">{erroFinanceiro}</div>
+              <div className="overview-erro" role="alert">{erroFinanceiro}</div>
             )}
 
             <div className="overview-cards-principais">
@@ -460,7 +433,7 @@ export default function Dashboard({
                   key={card.titulo}
                   className={`overview-card-principal ${card.classe}`}
                 >
-                  <div className="overview-card-icone">{card.icone}</div>
+                  <div className="overview-card-icone"><Icon name={card.classe === 'entrada' ? 'down' : card.classe === 'saida' ? 'up' : card.classe === 'pagar' ? 'receipt' : 'wallet'} size={22} /></div>
                   <div className="overview-card-conteudo">
                     <span>{card.titulo}</span>
                     <strong>
@@ -538,65 +511,25 @@ export default function Dashboard({
           </section>
         )}
 
-        {operador && (
-          <section className="overview-operacional">
-            <div className="overview-topo">
-              <div>
-                <span className="overview-eyebrow">ÁREA OPERACIONAL</span>
-                <h2>Operação e cadastros</h2>
-                <p>Produtos, documentos, compras e estoque.</p>
-              </div>
-            </div>
+        <section className="quick-access">
+          <div className="section-heading"><div><span className="page-kicker">SUA ROTINA</span><h2>Acesso rápido</h2></div><span>Continue por aqui</span></div>
+          <div className="quick-access-list">{[
+            ['PDV', 'Abrir caixa e atender', 'cart'], ['Produtos', 'Catálogo e preços', 'box'],
+            ['Vendas', 'Vendas e recebimentos', 'chart'], ['Estoque', 'Saldos e movimentações', 'stock'],
+            ['Compras', 'Notas e fornecedores', 'cart'], ['Histórico do caixa', 'Aberturas e fechamentos', 'clock'],
+            ['Usuários e papéis', 'Equipe e permissões', 'users'],
+          ].filter(([title]) => menuItems.includes(title)).slice(0,4).map(([title, detail, icon]) => <button type="button" key={title} onClick={() => navegar(title)}><span className="quick-icon"><Icon name={icon} /></span><span><strong>{title}</strong><small>{detail}</small></span><Icon name="arrow" size={18} /></button>)}</div>
+        </section>
 
-            <div className="overview-cards-operacionais">
-              {[
-                ['Produtos', 'Cadastro', 'Manutenção do catálogo'],
-                ['Compras / NF-e', 'Entrada', 'Importação e conferência'],
-                ['Contas / Boletos', 'Operacional', 'Rotinas autorizadas'],
-                ['Estoque', 'Controle', 'Movimentações e conferências'],
-              ].map(([titulo, destaque, detalhe]) => (
-                <article key={titulo} className="overview-card-operacional">
-                  <span>{titulo}</span>
-                  <strong>{destaque}</strong>
-                  <small>{detalhe}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {caixa && (
-          <section className="overview-operacional">
-            <div className="overview-topo">
-              <div>
-                <span className="overview-eyebrow">OPERAÇÃO DE LOJA</span>
-                <h2>Caixa e movimentação</h2>
-                <p>Atalhos operacionais da Matriz.</p>
-              </div>
-            </div>
-
-            <div className="overview-cards-operacionais">
-              {[
-                ['Vendas', 'Consultar', 'Vendas do dia e correções'],
-                ['Estoque', 'Movimentar', 'Contagens, reposições e ajustes'],
-                ['Transferências', 'Produtos', 'Entre unidades e locais'],
-                ['Fechamento', 'Matriz', 'Lançamento manual diário'],
-                ['PDV', 'Venda', 'Vendas integradas ao estoque'],
-              ].map(([titulo, destaque, detalhe]) => (
-                <article key={titulo} className="overview-card-operacional">
-                  <span>{titulo}</span>
-                  <strong>{destaque}</strong>
-                  <small>{detalhe}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
       </>
     );
   }
 
   function renderizarPagina() {
+    if (!menuItems.includes(paginaAtiva)) return <div className="page-header"><div><h1>Acesso não disponível</h1><p>Seu papel não tem acesso a este módulo. Solicite a liberação ao responsável.</p></div></div>;
+    if (paginaAtiva === 'Usuários e papéis') return <Usuarios />;
+    if (paginaAtiva === 'Histórico do caixa') return <HistoricoCaixas />;
     if (
       paginaAtiva ===
       'Visão Geral'
@@ -634,16 +567,14 @@ export default function Dashboard({
 
     if (
       paginaAtiva ===
-      'Financeiro' &&
-      acessoTotal
+      'Financeiro'
     ) {
       return <Financeiro />;
     }
 
     if (
       paginaAtiva ===
-        'Clientes / A Prazo' &&
-      acessoTotal
+        'Clientes / A Prazo'
     ) {
       return <ClientesPrazo />;
     }
@@ -657,16 +588,14 @@ export default function Dashboard({
 
     if (
       paginaAtiva ===
-        'Contas / Boletos' &&
-      (acessoTotal || operador)
+        'Contas / Boletos'
     ) {
       return <Financeiro />;
     }
 
     if (
       paginaAtiva ===
-        'Transferências' &&
-      caixa
+        'Transferências'
     ) {
       return (
         <Estoque
@@ -675,34 +604,25 @@ export default function Dashboard({
       );
     }
 
-    if (
-      paginaAtiva ===
-        'Fechamento Diário' &&
-      caixa
-    ) {
-      return <Financeiro />;
-    }
+
 
     if (
       paginaAtiva ===
-        'PDV' &&
-      (caixa || modoPdvDireto)
+        'PDV'
     ) {
       return <PDV />;
     }
 
     if (
       paginaAtiva ===
-        'Fechamento Diário' &&
-      (acessoTotal || caixa)
+        'Fechamento Diário'
     ) {
       return <FechamentoDiario />;
     }
 
     if (
       paginaAtiva ===
-        'Vendas' &&
-      (acessoTotal || caixa)
+        'Vendas'
     ) {
       return <Vendas />;
     }
@@ -736,7 +656,10 @@ export default function Dashboard({
     );
   }
 
-  if (modoPdvDireto) {
+  if (carregandoLoja) return <div className="store-context-loading">Carregando seus mercados...</div>;
+  if (erroLoja) return <div className="store-context-loading" role="alert"><p>{erroLoja}</p><button type="button" className="secondary-button" onClick={() => void atualizarLojas()}>Tentar novamente</button></div>;
+
+  if (modoPdvDireto && menuItems.includes('PDV')) {
     return (
       <div
         style={{
@@ -757,94 +680,5 @@ export default function Dashboard({
     );
   }
 
-  return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <img
-          src={logo}
-          alt="Nosso Mercadinho"
-          className="sidebar-logo"
-        />
-
-        <div
-          style={{
-            margin:
-              '-30px 8px 28px',
-            padding:
-              '14px 12px',
-            borderRadius: 12,
-            background:
-              '#fafafa',
-          }}
-        >
-          <strong
-            style={{
-              display: 'block',
-              fontSize: 14,
-            }}
-          >
-            {usuario?.nome ||
-              'Usuário'}
-          </strong>
-
-          <span
-            style={{
-              display: 'block',
-              marginTop: 4,
-              fontSize: 12,
-              color:
-                '#737373',
-            }}
-          >
-            {nomePerfil(
-              perfil
-            )}
-          </span>
-        </div>
-
-        <nav>
-          {menuItems.map(
-            (item) => (
-              <button
-                key={item}
-                type="button"
-                className={
-                  paginaAtiva ===
-                  item
-                    ? 'menu-item menu-item-active active'
-                    : 'menu-item'
-                }
-                onClick={() =>
-                  setPaginaAtiva(
-                    item
-                  )
-                }
-              >
-                {item}
-              </button>
-            )
-          )}
-        </nav>
-
-        <button
-          type="button"
-          className="menu-item"
-          onClick={
-            fazerLogout
-          }
-          style={{
-            marginTop: 24,
-            color:
-              '#b42318',
-          }}
-        >
-          Sair
-        </button>
-      </aside>
-
-      <main className="dashboard-content">
-        {renderizarPagina()}
-      </main>
-    </div>
-  );
+  return <AppShell items={menuItems} active={paginaAtiva} navigate={navegar} logout={fazerLogout} name={usuario?.nome || 'Usuário'} role={usuario?.papelNome || nomePerfil(perfil)}><div key={paginaAtiva === 'PDV' ? 'pdv' : String(lojaAtiva?.id || 'sem-loja')}>{renderizarPagina()}</div></AppShell>;
 }

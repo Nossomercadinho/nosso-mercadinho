@@ -1,4 +1,7 @@
-﻿import {
+import { apiFetch } from '../services/apiClient';
+import ResponsiveFilters from '../components/ResponsiveFilters';
+import { useLoja } from '../contexts/LojaContext';
+import {
   useEffect,
   useMemo,
   useState,
@@ -21,6 +24,7 @@ type Usuario = {
   id: number;
   nome: string;
   perfil?: string;
+  permissoes?: string[];
 };
 
 type Loja = {
@@ -226,7 +230,7 @@ function ehFechamentoCaixa(lancamento: Lancamento) {
 }
 
 function tipoVisualLancamento(lancamento: Lancamento): 'ENTRADA' | 'SAIDA' {
-  return ehFechamentoCaixa(lancamento) ? 'ENTRADA' : 'SAIDA';
+  return ehFechamentoCaixa(lancamento) || lancamento.tipo === 'ENTRADA' ? 'ENTRADA' : 'SAIDA';
 }
 
 /*
@@ -246,13 +250,15 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
 }
 
 export default function Financeiro() {
+  const { lojaAtiva } = useLoja();
+  const idLojaAtiva = lojaAtiva ? String(lojaAtiva.id) : '';
   const usuario =
     useMemo<Usuario | null>(() => {
       try {
@@ -269,24 +275,18 @@ export default function Financeiro() {
       }
     }, []);
 
-  const perfilUsuario =
-    String(
-      usuario?.perfil || ''
-    ).toUpperCase();
-
   const acessoGerencial =
-    perfilUsuario === 'ADMINISTRADOR' ||
-    perfilUsuario === 'CEO';
+    Boolean(usuario?.permissoes?.includes('financeiro'));
 
   const acessoOperacional =
     acessoGerencial ||
-    perfilUsuario === 'OPERADOR';
+    Boolean(usuario?.permissoes?.includes('contas'));
 
   const ehCaixa =
-    perfilUsuario === 'CAIXA';
+    !acessoOperacional && Boolean(usuario?.permissoes?.includes('fechamento'));
 
   const podeEditarFechamento =
-    acessoGerencial;
+    acessoGerencial || Boolean(usuario?.permissoes?.includes('fechamento'));
 
   const [
     fechamentoEditando,
@@ -570,7 +570,7 @@ export default function Financeiro() {
 
   /*
   |--------------------------------------------------------------------------
-  | FECHAMENTO DIÁRIO - MATRIZ E CONDOMÍNIOS
+  | FECHAMENTO DIÁRIO DO MERCADO ATIVO
   |--------------------------------------------------------------------------
   */
 
@@ -578,16 +578,6 @@ export default function Financeiro() {
     mostrarFechamento,
     setMostrarFechamento,
   ] = useState(false);
-
-  const [
-    areaFechamento,
-    setAreaFechamento,
-  ] = useState<'MATRIZ' | 'CONDOMINIOS'>('MATRIZ');
-
-  const [
-    abaCondominio,
-    setAbaCondominio,
-  ] = useState<'TSC1' | 'TSC2' | 'MAISON'>('TSC1');
 
   const [
     dataFechamento,
@@ -609,54 +599,9 @@ export default function Financeiro() {
     setSalvandoFechamento,
   ] = useState(false);
 
-  const lojaMatriz = useMemo(() => {
-    return (
-      lojas.find((loja) =>
-        String(loja.nome || '')
-          .trim()
-          .toUpperCase()
-          .includes('MATRIZ')
-      ) || null
-    );
-  }, [lojas]);
-
-  const lojaTsc1 = useMemo(() => {
-    return (
-      lojas.find((loja) => {
-        const nome = String(loja.nome || '').trim().toUpperCase();
-        return nome.includes('TSC') && (nome.includes('01') || nome.includes(' 1') || nome.endsWith('1'));
-      }) || null
-    );
-  }, [lojas]);
-
-  const lojaTsc2 = useMemo(() => {
-    return (
-      lojas.find((loja) => {
-        const nome = String(loja.nome || '').trim().toUpperCase();
-        return nome.includes('TSC') && (nome.includes('02') || nome.includes(' 2') || nome.endsWith('2'));
-      }) || null
-    );
-  }, [lojas]);
-
-  const lojaMaison = useMemo(() => {
-    return (
-      lojas.find((loja) =>
-        String(loja.nome || '')
-          .trim()
-          .toUpperCase()
-          .includes('MAISON')
-      ) || null
-    );
-  }, [lojas]);
-
-  const lojaFechamento = useMemo(() => {
-    if (areaFechamento === 'MATRIZ') return lojaMatriz;
-    if (abaCondominio === 'TSC1') return lojaTsc1;
-    if (abaCondominio === 'TSC2') return lojaTsc2;
-    return lojaMaison;
-  }, [areaFechamento, abaCondominio, lojaMatriz, lojaTsc1, lojaTsc2, lojaMaison]);
-
-  const fechamentoCondominio = areaFechamento === 'CONDOMINIOS';
+  const lojaSelecionadaFechamento = useMemo(() => lojas.find((loja) => loja.id === lojaAtiva?.id) || lojaAtiva, [lojas, lojaAtiva]);
+  const lojaFechamento = lojaSelecionadaFechamento;
+  const fechamentoCondominio = false;
 
   const totalFechamento =
     (fechamentoCondominio ? 0 : Number(valorEspecie || 0)) +
@@ -698,7 +643,7 @@ export default function Financeiro() {
   const [
     lojaId,
     setLojaId,
-  ] = useState('');
+  ] = useState(idLojaAtiva);
 
   const [
     descricao,
@@ -783,6 +728,10 @@ export default function Financeiro() {
   */
 
   async function carregarTudo() {
+    if (!acessoOperacional && !ehCaixa) {
+      setCarregando(false);
+      return;
+    }
     setCarregando(true);
 
     try {
@@ -890,6 +839,7 @@ export default function Financeiro() {
   }
 
   async function carregarResumo() {
+    if (!acessoGerencial) return;
     try {
       const resposta =
         await fetchAutenticado(
@@ -1272,15 +1222,7 @@ export default function Financeiro() {
         );
       }
 
-      if (
-        sugestao.lojaId
-      ) {
-        setLojaId(
-          String(
-            sugestao.lojaId
-          )
-        );
-      }
+      setLojaId(idLojaAtiva);
 
       if (
         sugestao.formaPagamento
@@ -1319,7 +1261,7 @@ export default function Financeiro() {
     setFornecedorId('');
     setFornecedorBusca('');
     setCategoriaId('');
-    setLojaId('');
+    setLojaId(idLojaAtiva);
     setDescricao('');
     setNumeroDocumento('');
     setValorOriginal('');
@@ -1393,7 +1335,7 @@ export default function Financeiro() {
   }
 
   async function recarregarDadosFinanceiros() {
-    if (ehCaixa) {
+    if (!acessoOperacional) {
       return;
     }
 
@@ -1803,13 +1745,11 @@ export default function Financeiro() {
     setMensagem('');
 
     const lojaDestinoFechamento =
-      ehCaixa ? lojaMatriz : lojaFechamento;
+    lojaFechamento;
 
     if (!lojaDestinoFechamento) {
       setErro(
-        ehCaixa || areaFechamento === 'MATRIZ'
-          ? 'Não foi possível localizar a unidade Matriz.'
-          : 'Não foi possível localizar esta unidade de condomínio.'
+        'Selecione um mercado no topo do sistema antes de registrar o fechamento.'
       );
       return;
     }
@@ -2116,21 +2056,7 @@ Data: ${dataBR(
         : ''
     );
 
-    setEdicaoLojaId(
-      lojas.find(
-        (loja) =>
-          loja.nome ===
-          lancamento.loja_nome
-      )?.id
-        ? String(
-            lojas.find(
-              (loja) =>
-                loja.nome ===
-                lancamento.loja_nome
-            )?.id
-          )
-        : ''
-    );
+    setEdicaoLojaId(idLojaAtiva);
 
     setEdicaoCategoriaId(
       categorias.find(
@@ -2455,7 +2381,7 @@ Os totais do Financeiro serão recalculados.`
           <div>
             <h1>Fechamento Diário</h1>
             <p>
-              Registre o fechamento diário da Matriz.
+              Registre o fechamento diário de {lojaAtiva?.nome}.
             </p>
           </div>
         </div>
@@ -2475,7 +2401,7 @@ Os totais do Financeiro serão recalculados.`
         <div className="financeiro-fechamento-card">
           <div className="financeiro-novo-header">
             <div>
-              <h2>Matriz</h2>
+              <h2>{lojaAtiva?.nome}</h2>
               <p>
                 Informe os valores recebidos no fechamento do dia.
               </p>
@@ -2532,10 +2458,10 @@ Os totais do Financeiro serão recalculados.`
             <div className="financeiro-fechamento-info">
               <span>Unidade</span>
               <strong>
-                {lojaMatriz?.nome || 'Unidade Matriz não localizada'}
+                {lojaSelecionadaFechamento?.nome || 'Selecione um mercado'}
               </strong>
               <small>
-                O fechamento será registrado somente para a Matriz.
+                O fechamento será registrado no mercado selecionado.
               </small>
             </div>
 
@@ -2546,7 +2472,7 @@ Os totais do Financeiro serão recalculados.`
                 disabled={
                   salvandoFechamento ||
                   totalCaixa <= 0 ||
-                  !lojaMatriz
+                  !lojaSelecionadaFechamento
                 }
               >
                 {salvandoFechamento
@@ -2566,7 +2492,7 @@ Os totais do Financeiro serão recalculados.`
         <div className="financeiro-header">
           <div>
             <h1>Acesso não disponível</h1>
-            <p>Este módulo não está liberado para o seu perfil.</p>
+            <p>Seu papel não permite acessar este módulo.</p>
           </div>
         </div>
       </div>
@@ -2782,16 +2708,7 @@ Os totais do Financeiro serão recalculados.`
               <div className="financeiro-campo financeiro-campo-modal">
                 <label>Unidade</label>
 
-                <CampoPesquisa
-                  value={edicaoLojaId}
-                  placeholder="Pesquisar unidade"
-                  options={lojas.map((loja) => ({
-                    value: String(loja.id),
-                    label: loja.nome,
-                  }))}
-                  onSelect={(valor) => setEdicaoLojaId(valor)}
-                  mensagemVazia="Nenhuma unidade encontrada."
-                />
+                <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
               </div>
 
               <div className="financeiro-campo financeiro-campo-modal">
@@ -3272,7 +3189,7 @@ Os totais do Financeiro serão recalculados.`
       )}
 
       {/* =====================================================
-          FECHAMENTO DIÁRIO - MATRIZ E CONDOMÍNIOS
+          FECHAMENTO DIÁRIO DO MERCADO ATIVO
       ====================================================== */}
 
       {mostrarFechamento && (
@@ -3281,7 +3198,7 @@ Os totais do Financeiro serão recalculados.`
             <div>
               <h2>Fechamento Diário</h2>
               <p>
-                Registre as entradas diárias da Matriz e dos Condomínios.
+                Registre as entradas diárias de {lojaAtiva?.nome}.
               </p>
             </div>
 
@@ -3293,60 +3210,6 @@ Os totais do Financeiro serão recalculados.`
               ×
             </button>
           </div>
-
-          <div className="financeiro-fechamento-area-tabs">
-            <button
-              type="button"
-              className={areaFechamento === 'MATRIZ' ? 'ativo' : ''}
-              onClick={() => {
-                setAreaFechamento('MATRIZ');
-                setValorEspecie('');
-                setValorMaquininhas('');
-                setErro('');
-              }}
-            >
-              MATRIZ
-            </button>
-
-            <button
-              type="button"
-              className={areaFechamento === 'CONDOMINIOS' ? 'ativo' : ''}
-              onClick={() => {
-                setAreaFechamento('CONDOMINIOS');
-                setValorEspecie('');
-                setValorMaquininhas('');
-                setErro('');
-              }}
-            >
-              CONDOMÍNIOS
-            </button>
-          </div>
-
-          {areaFechamento === 'CONDOMINIOS' && (
-            <div className="financeiro-condominio-tabs">
-              <button
-                type="button"
-                className={abaCondominio === 'TSC1' ? 'ativo' : ''}
-                onClick={() => { setAbaCondominio('TSC1'); setValorMaquininhas(''); setErro(''); }}
-              >
-                TSC 1
-              </button>
-              <button
-                type="button"
-                className={abaCondominio === 'TSC2' ? 'ativo' : ''}
-                onClick={() => { setAbaCondominio('TSC2'); setValorMaquininhas(''); setErro(''); }}
-              >
-                TSC 2
-              </button>
-              <button
-                type="button"
-                className={abaCondominio === 'MAISON' ? 'ativo' : ''}
-                onClick={() => { setAbaCondominio('MAISON'); setValorMaquininhas(''); setErro(''); }}
-              >
-                MAISON
-              </button>
-            </div>
-          )}
 
           <form onSubmit={salvarFechamentoCaixa}>
             <div className={`financeiro-fechamento-grid ${fechamentoCondominio ? 'condominio' : ''}`}>
@@ -3397,7 +3260,7 @@ Os totais do Financeiro serão recalculados.`
               <small>
                 {fechamentoCondominio
                   ? 'Será lançado automaticamente como ENTRADA na categoria Condomínios.'
-                  : 'Será lançado automaticamente como uma única entrada recebida da Matriz.'}
+                  : 'Será registrado como entrada recebida deste mercado.'}
               </small>
             </div>
 
@@ -3771,24 +3634,7 @@ Os totais do Financeiro serão recalculados.`
                   Unidade
                 </label>
 
-                <CampoPesquisa
-                  value={lojaId}
-                  placeholder="Digite para pesquisar a unidade"
-                  options={lojas.map(
-                    (loja) => ({
-                      value: String(
-                        loja.id
-                      ),
-                      label: loja.nome,
-                    })
-                  )}
-                  onSelect={(valor) =>
-                    setLojaId(
-                      valor
-                    )
-                  }
-                  mensagemVazia="Nenhuma unidade encontrada."
-                />
+                <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
               </div>
 
               <div className="financeiro-campo">
@@ -3893,7 +3739,7 @@ Os totais do Financeiro serão recalculados.`
                   </button>
                 </div>
 
-                <div
+                <div className="responsive-layout"
                   style={{
                     display: 'grid',
                     gridTemplateColumns:
@@ -3983,7 +3829,7 @@ Os totais do Financeiro serão recalculados.`
                     item,
                     indice
                   ) => (
-                    <div
+                    <div className="responsive-layout"
                       key={
                         item.id
                       }
@@ -4231,7 +4077,7 @@ Os totais do Financeiro serão recalculados.`
           FILTROS
       ====================================================== */}
 
-      <div className="financeiro-filtros">
+      <ResponsiveFilters activeCount={[busca, filtroTipo, filtroStatus].filter(Boolean).length} onClear={() => { setBusca(''); setFiltroTipo(''); setFiltroStatus(''); }}><div className="financeiro-filtros">
 
         <input
           type="text"
@@ -4298,7 +4144,7 @@ Os totais do Financeiro serão recalculados.`
           </option>
         </select>
 
-      </div>
+      </div></ResponsiveFilters>
 
       {/* =====================================================
           TABELA
@@ -4306,47 +4152,47 @@ Os totais do Financeiro serão recalculados.`
 
       <div className="financeiro-tabela">
 
-        <table>
+        <table className="mobile-record-table">
 
           <thead>
             <tr>
-              <th>
+              <th scope="col">
                 Vencimento
               </th>
 
-              <th>
+              <th scope="col">
                 Tipo
               </th>
 
-              <th>
+              <th scope="col">
                 Fornecedor
               </th>
 
-              <th>
+              <th scope="col">
                 Descrição
               </th>
 
-              <th>
+              <th scope="col">
                 Unidade
               </th>
 
-              <th>
+              <th scope="col">
                 Categoria
               </th>
 
-              <th>
+              <th scope="col">
                 Valor
               </th>
 
-              <th>
+              <th scope="col">
                 Status
               </th>
 
-              <th>
+              <th scope="col">
                 Usuário
               </th>
 
-              <th>
+              <th scope="col">
                 Ações
               </th>
             </tr>
@@ -4390,18 +4236,8 @@ Os totais do Financeiro serão recalculados.`
                         ? 'financeiro-linha-entrada'
                         : 'financeiro-linha-saida'
                     }
-                    style={{
-                      backgroundColor:
-                        tipoVisualLancamento(lancamento) === 'ENTRADA'
-                          ? '#ecfdf3'
-                          : '#fff1f2',
-                      borderLeft:
-                        tipoVisualLancamento(lancamento) === 'ENTRADA'
-                          ? '5px solid #16a34a'
-                          : '5px solid #dc2626',
-                    }}
                   >
-                    <td>
+                    <td data-label="Vencimento">
                       <strong>
                         {dataBR(
                           lancamento.data_vencimento
@@ -4409,7 +4245,7 @@ Os totais do Financeiro serão recalculados.`
                       </strong>
                     </td>
 
-                    <td>
+                    <td data-label="Tipo">
                       <span
                         className={`financeiro-tipo-badge ${
                           tipoVisualLancamento(lancamento) === 'ENTRADA'
@@ -4426,7 +4262,7 @@ Os totais do Financeiro serão recalculados.`
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Fornecedor">
                       <strong>
                         {fornecedor}
                       </strong>
@@ -4440,21 +4276,21 @@ Os totais do Financeiro serão recalculados.`
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Descrição">
                       {lancamento.descricao}
                     </td>
 
-                    <td>
+                    <td data-label="Unidade">
                       {lancamento.loja_nome ||
                         '-'}
                     </td>
 
-                    <td>
+                    <td data-label="Categoria">
                       {lancamento.categoria_nome ||
                         '-'}
                     </td>
 
-                    <td>
+                    <td data-label="Valor">
                       <strong
                         style={{
                           color:
@@ -4472,7 +4308,7 @@ Os totais do Financeiro serão recalculados.`
                       </strong>
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                       <span
                         className={`financeiro-status ${String(
                           status
@@ -4488,12 +4324,12 @@ Os totais do Financeiro serão recalculados.`
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Usuário">
                       {lancamento.usuario_nome ||
                         'Não identificado'}
                     </td>
 
-                    <td>
+                    <td data-label="Ações">
                       <div className="financeiro-acoes-linha">
                         {lancamento.status ===
                           'PENDENTE' && (

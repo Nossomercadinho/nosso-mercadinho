@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/apiClient';
 import { useEffect, useState } from 'react';
 import './IdentificarExecutor.css';
 
@@ -55,7 +56,7 @@ export default function IdentificarExecutor({
     try {
       setConsultando(true);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API}/executores/codigo/${encodeURIComponent(
           codigoDigitado
         )}`

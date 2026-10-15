@@ -1,3 +1,7 @@
+import { apiFetch } from '../services/apiClient';
+import ResponsiveFilters from '../components/ResponsiveFilters';
+import Icon from '../components/Icon';
+import { useLoja } from '../contexts/LojaContext';
 import { useEffect, useMemo, useState } from 'react';
 
 type EstoqueItem = {
@@ -41,6 +45,7 @@ type UsuarioLogado = {
   nome: string;
   email: string;
   perfil: string;
+  permissoes?: string[];
 };
 
 type ExecutorIdentificado = {
@@ -98,7 +103,7 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
@@ -111,6 +116,8 @@ type EstoqueProps = {
 export default function Estoque({
   abrirInicial,
 }: EstoqueProps = {}) {
+  const { lojaAtiva } = useLoja();
+  const idLojaAtiva = lojaAtiva ? String(lojaAtiva.id) : '';
   const usuarioLogado = useMemo<UsuarioLogado | null>(() => {
     try {
       const usuarioSalvo = localStorage.getItem('usuarioLogado');
@@ -120,12 +127,7 @@ export default function Estoque({
     }
   }, []);
 
-  const perfilUsuario = String(
-    usuarioLogado?.perfil || ''
-  ).toUpperCase();
-
-  const ehCaixa =
-    perfilUsuario === 'CAIXA';
+  const acessoRestrito = !usuarioLogado?.permissoes?.includes('estoque');
 
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
   const [lojas, setLojas] = useState<Loja[]>([]);
@@ -159,7 +161,7 @@ export default function Estoque({
     useState(false);
 
   const [busca, setBusca] = useState('');
-  const [lojaFiltro, setLojaFiltro] = useState('');
+  const [lojaFiltro, setLojaFiltro] = useState(idLojaAtiva);
   const [localFiltro, setLocalFiltro] = useState('');
   const [tipoLocalFiltro, setTipoLocalFiltro] = useState('');
   const [situacaoFiltro, setSituacaoFiltro] = useState('');
@@ -172,7 +174,7 @@ export default function Estoque({
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
 
   const [produtoId, setProdutoId] = useState('');
-  const [lojaId, setLojaId] = useState('');
+  const [lojaId, setLojaId] = useState(idLojaAtiva);
   const [localId, setLocalId] = useState('');
   const [locais, setLocais] = useState<LocalEstoque[]>([]);
   const [quantidade, setQuantidade] = useState('');
@@ -180,7 +182,7 @@ export default function Estoque({
   const [observacao, setObservacao] = useState('');
 
   const [produtoSaidaId, setProdutoSaidaId] = useState('');
-  const [lojaSaidaId, setLojaSaidaId] = useState('');
+  const [lojaSaidaId, setLojaSaidaId] = useState(idLojaAtiva);
   const [localSaidaId, setLocalSaidaId] = useState('');
   const [locaisSaida, setLocaisSaida] = useState<LocalEstoque[]>([]);
   const [tipoSaida, setTipoSaida] = useState<TipoSaidaTela>('PERDA');
@@ -189,7 +191,7 @@ export default function Estoque({
   const [justificativaSaida, setJustificativaSaida] = useState('');
 
   const [produtoReposicaoId, setProdutoReposicaoId] = useState('');
-  const [lojaReposicaoId, setLojaReposicaoId] = useState('');
+  const [lojaReposicaoId, setLojaReposicaoId] = useState(idLojaAtiva);
   const [locaisReposicao, setLocaisReposicao] = useState<LocalEstoque[]>([]);
   const [localOrigemId, setLocalOrigemId] = useState('');
   const [localDestinoId, setLocalDestinoId] = useState('');
@@ -197,7 +199,7 @@ export default function Estoque({
   const [observacaoReposicao, setObservacaoReposicao] = useState('');
 
   const [produtoTransferenciaId, setProdutoTransferenciaId] = useState('');
-  const [lojaOrigemTransferenciaId, setLojaOrigemTransferenciaId] = useState('');
+  const [lojaOrigemTransferenciaId, setLojaOrigemTransferenciaId] = useState(idLojaAtiva);
   const [localOrigemTransferenciaId, setLocalOrigemTransferenciaId] = useState('');
   const [locaisOrigemTransferencia, setLocaisOrigemTransferencia] = useState<LocalEstoque[]>([]);
   const [lojaDestinoTransferenciaId, setLojaDestinoTransferenciaId] = useState('');
@@ -207,7 +209,7 @@ export default function Estoque({
   const [observacaoTransferencia, setObservacaoTransferencia] = useState('');
 
   const [produtoContagemId, setProdutoContagemId] = useState('');
-  const [lojaContagemId, setLojaContagemId] = useState('');
+  const [lojaContagemId, setLojaContagemId] = useState(idLojaAtiva);
   const [localContagemId, setLocalContagemId] = useState('');
   const [locaisContagem, setLocaisContagem] = useState<LocalEstoque[]>([]);
   const [quantidadeContada, setQuantidadeContada] = useState('');
@@ -243,10 +245,10 @@ export default function Estoque({
   }
 
   async function carregarProdutos() {
-    if (ehCaixa) return;
+    if (acessoRestrito) return;
 
     try {
-      const response = await fetchAutenticado(`${API}/produtos`);
+      const response = await fetchAutenticado(`${API}/produtos/loja/catalogo`);
       const data = await response.json();
       if (data.sucesso) setProdutos(data.produtos || []);
     } catch (error) {
@@ -266,7 +268,7 @@ export default function Estoque({
 
         setEstoque(estoqueCarregado);
 
-        if (ehCaixa) {
+        if (acessoRestrito) {
           const mapaProdutos =
             new Map<number, Produto>();
 
@@ -343,7 +345,7 @@ export default function Estoque({
   function abrirEntrada() {
     fecharTudo();
     setProdutoId('');
-    setLojaId('');
+    setLojaId(idLojaAtiva);
     setLocalId('');
     setLocais([]);
     setQuantidade('');
@@ -352,6 +354,7 @@ export default function Estoque({
     setCodigoExecutorEntrada('');
     setExecutorEntrada(null);
     setMostrarEntrada(true);
+    void carregarLocaisEntrada(idLojaAtiva);
   }
 
   async function identificarExecutorEntrada() {
@@ -456,7 +459,7 @@ export default function Estoque({
   function abrirSaida() {
     fecharTudo();
     setProdutoSaidaId('');
-    setLojaSaidaId('');
+    setLojaSaidaId(idLojaAtiva);
     setLocalSaidaId('');
     setLocaisSaida([]);
     setTipoSaida('PERDA');
@@ -466,6 +469,7 @@ export default function Estoque({
     setCodigoExecutorSaida('');
     setExecutorSaida(null);
     setMostrarSaida(true);
+    void carregarLocaisSaida(idLojaAtiva);
   }
 
   async function identificarExecutorSaida() {
@@ -603,7 +607,7 @@ export default function Estoque({
   function abrirReposicao() {
     fecharTudo();
     setProdutoReposicaoId('');
-    setLojaReposicaoId('');
+    setLojaReposicaoId(idLojaAtiva);
     setLocalOrigemId('');
     setLocalDestinoId('');
     setLocaisReposicao([]);
@@ -612,6 +616,7 @@ export default function Estoque({
     setCodigoExecutorReposicao('');
     setExecutorReposicao(null);
     setMostrarReposicao(true);
+    void carregarLocaisReposicao(idLojaAtiva);
   }
 
   async function identificarExecutorReposicao() {
@@ -739,7 +744,7 @@ export default function Estoque({
   function abrirTransferencia() {
     fecharTudo();
     setProdutoTransferenciaId('');
-    setLojaOrigemTransferenciaId('');
+    setLojaOrigemTransferenciaId(idLojaAtiva);
     setLocalOrigemTransferenciaId('');
     setLocaisOrigemTransferencia([]);
     setLojaDestinoTransferenciaId('');
@@ -750,6 +755,7 @@ export default function Estoque({
     setCodigoExecutorTransferencia('');
     setExecutorTransferencia(null);
     setMostrarTransferencia(true);
+    void carregarLocaisOrigemTransferencia(idLojaAtiva);
   }
 
   async function identificarExecutorTransferencia() {
@@ -872,7 +878,7 @@ export default function Estoque({
   function abrirNovaContagem() {
     fecharTudo();
     setProdutoContagemId('');
-    setLojaContagemId('');
+    setLojaContagemId(idLojaAtiva);
     setLocalContagemId('');
     setLocaisContagem([]);
     setQuantidadeContada('');
@@ -881,6 +887,7 @@ export default function Estoque({
     setCodigoExecutorContagem('');
     setExecutorContagem(null);
     setMostrarNovaContagem(true);
+    void carregarLocaisContagem(idLojaAtiva);
   }
 
   async function abrirCorrecaoQuantidade(item: EstoqueItem) {
@@ -1203,7 +1210,7 @@ export default function Estoque({
 
   function limparFiltrosEstoque() {
     setBusca('');
-    setLojaFiltro('');
+    setLojaFiltro(idLojaAtiva);
     setLocalFiltro('');
     setTipoLocalFiltro('');
     setSituacaoFiltro('');
@@ -1230,7 +1237,7 @@ export default function Estoque({
       <div className="page-header">
         <div>
           <h1>Estoque</h1>
-          <p>Controle por unidade, depósito e área de venda.</p>
+          <p>Estoque de {lojaAtiva?.nome || 'seu mercado'}, por depósito e área de venda.</p>
 
           {usuarioLogado && (
             <div className="usuario-logado-info">
@@ -1244,13 +1251,13 @@ export default function Estoque({
             Nova Contagem
           </button>
 
-          {!ehCaixa && (
+          {!acessoRestrito && (
             <button type="button" className="primary-button" onClick={abrirEntrada}>
               + Entrada
             </button>
           )}
 
-          {!ehCaixa && (
+          {!acessoRestrito && (
             <button type="button" className="secondary-button" onClick={abrirSaida}>
               Saída
             </button>
@@ -1264,7 +1271,7 @@ export default function Estoque({
             Transferência
           </button>
 
-          {!ehCaixa && (
+          {!acessoRestrito && (
             <button type="button" className="secondary-button historico-button" onClick={abrirHistorico}>
               Histórico
             </button>
@@ -1274,14 +1281,14 @@ export default function Estoque({
 
       {mensagem && <div className="produto-mensagem-geral">{mensagem}</div>}
 
-      {!ehCaixa && mostrarEntrada && (
+      {!acessoRestrito && mostrarEntrada && (
         <div className="estoque-form-box">
           <div className="produto-form-header">
             <h2>Nova Entrada</h2>
             <p>Registre uma entrada de mercadoria.</p>
           </div>
 
-          <div
+          <div className="responsive-layout"
             style={{
               display: 'grid',
               gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -1360,20 +1367,7 @@ export default function Estoque({
 
             <div>
               <label>Unidade</label>
-              <select
-                value={lojaId}
-                onChange={(e) => {
-                  setLojaId(e.target.value);
-                  carregarLocaisEntrada(e.target.value);
-                }}
-              >
-                <option value="">Selecione a unidade</option>
-                {lojas.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
-                  </option>
-                ))}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -1431,14 +1425,14 @@ export default function Estoque({
         </div>
       )}
 
-      {!ehCaixa && mostrarSaida && (
+      {!acessoRestrito && mostrarSaida && (
         <div className="estoque-form-box">
           <div className="produto-form-header">
             <h2>Nova Saída</h2>
             <p>Registre perdas, avarias, vencimentos e outras saídas.</p>
           </div>
 
-          <div
+          <div className="responsive-layout"
             style={{
               display: 'grid',
               gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -1517,20 +1511,7 @@ export default function Estoque({
 
             <div>
               <label>Unidade</label>
-              <select
-                value={lojaSaidaId}
-                onChange={(e) => {
-                  setLojaSaidaId(e.target.value);
-                  carregarLocaisSaida(e.target.value);
-                }}
-              >
-                <option value="">Selecione</option>
-                {lojas.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
-                  </option>
-                ))}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -1610,7 +1591,7 @@ export default function Estoque({
             <p>Movimentação dentro da mesma unidade.</p>
           </div>
 
-          <div
+          <div className="responsive-layout"
             style={{
               display: 'grid',
               gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -1676,20 +1657,7 @@ export default function Estoque({
 
             <div>
               <label>Unidade</label>
-              <select
-                value={lojaReposicaoId}
-                onChange={(e) => {
-                  setLojaReposicaoId(e.target.value);
-                  carregarLocaisReposicao(e.target.value);
-                }}
-              >
-                <option value="">Selecione</option>
-                {lojas.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
-                  </option>
-                ))}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -1753,10 +1721,10 @@ export default function Estoque({
         <div className="estoque-form-box">
           <div className="produto-form-header">
             <h2>Transferência entre Unidades</h2>
-            <p>Transfira produtos diretamente entre Matriz e filiais.</p>
+            <p>Transfira produtos deste mercado para outro mercado autorizado.</p>
           </div>
 
-          <div
+          <div className="responsive-layout"
             style={{
               display: 'grid',
               gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -1828,20 +1796,7 @@ export default function Estoque({
 
             <div>
               <label>Unidade de origem</label>
-              <select
-                value={lojaOrigemTransferenciaId}
-                onChange={(e) => {
-                  setLojaOrigemTransferenciaId(e.target.value);
-                  carregarLocaisOrigemTransferencia(e.target.value);
-                }}
-              >
-                <option value="">Selecione</option>
-                {lojas.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
-                  </option>
-                ))}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -1946,7 +1901,7 @@ export default function Estoque({
             <p>Informe a quantidade física correta. O sistema registrará somente a diferença como ajuste.</p>
           </div>
 
-          <div
+          <div className="responsive-layout"
             style={{
               display: 'grid',
               gridTemplateColumns: '180px auto minmax(0, 1fr)',
@@ -2025,20 +1980,7 @@ export default function Estoque({
 
             <div>
               <label>Unidade</label>
-              <select
-                value={lojaContagemId}
-                onChange={(e) => {
-                  setLojaContagemId(e.target.value);
-                  carregarLocaisContagem(e.target.value);
-                }}
-              >
-                <option value="">Selecione</option>
-                {lojas.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
-                  </option>
-                ))}
-              </select>
+              <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
             </div>
 
             <div>
@@ -2116,7 +2058,7 @@ export default function Estoque({
         </div>
       )}
 
-      {!ehCaixa && mostrarHistorico && (
+      {!acessoRestrito && mostrarHistorico && (
         <div className="historico-card">
           <div className="historico-header">
             <div>
@@ -2134,7 +2076,7 @@ export default function Estoque({
             </button>
           </div>
 
-          <div className="historico-filtros">
+          <ResponsiveFilters activeCount={[buscaHistorico, tipoHistorico, usuarioHistorico].filter(Boolean).length} onClear={() => { setBuscaHistorico(''); setTipoHistorico(''); setUsuarioHistorico(''); }}><div className="historico-filtros">
             <div className="historico-busca">
               <span className="historico-busca-icone">⌕</span>
               <input
@@ -2180,7 +2122,7 @@ export default function Estoque({
             >
               Limpar filtros
             </button>
-          </div>
+          </div></ResponsiveFilters>
 
           <div className="historico-resumo">
             <div className="historico-resumo-icone">↻</div>
@@ -2191,19 +2133,19 @@ export default function Estoque({
           </div>
 
           <div className="historico-table-wrap">
-            <table className="historico-table">
+            <table className="historico-table mobile-record-table">
               <thead>
                 <tr>
-                  <th>Data / Hora</th>
-                  <th>Usuário</th>
-                  <th>Produto / EAN</th>
-                  <th>Tipo</th>
-                  <th>Origem</th>
-                  <th>Destino</th>
-                  <th>Quantidade</th>
-                  <th>Custo Unit.</th>
-                  <th>Observação</th>
-                  <th>Justificativa</th>
+                  <th scope="col">Data / Hora</th>
+                  <th scope="col">Usuário</th>
+                  <th scope="col">Produto / EAN</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Origem</th>
+                  <th scope="col">Destino</th>
+                  <th scope="col">Quantidade</th>
+                  <th scope="col">Custo Unit.</th>
+                  <th scope="col">Observação</th>
+                  <th scope="col">Justificativa</th>
                 </tr>
               </thead>
 
@@ -2227,9 +2169,9 @@ export default function Estoque({
 
                     return (
                       <tr key={movimentacao.id}>
-                        <td>
+                        <td data-label="Data / Hora">
                           <div className="historico-data">
-                            <span className="historico-calendario">▣</span>
+                            <span className="historico-calendario"><Icon name="calendar" size={17} /></span>
                             <div>
                               <strong>{partes[0]}</strong>
                               <span>{partes[1] || ''}</span>
@@ -2237,9 +2179,9 @@ export default function Estoque({
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="Usuário">
                           <div className="historico-usuario">
-                            <div className="historico-avatar">👤</div>
+                            <div className="historico-avatar"><Icon name="users" size={17} /></div>
                             <div>
                               <strong>{movimentacao.usuario_nome || 'Não identificado'}</strong>
                               <span>{movimentacao.usuario_perfil || '-'}</span>
@@ -2247,32 +2189,32 @@ export default function Estoque({
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="Produto / EAN">
                           <div className="historico-produto">
                             <strong>{movimentacao.produto}</strong>
                             <span>EAN: {movimentacao.ean}</span>
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="Tipo">
                           <span className={`historico-badge tipo-${movimentacao.tipo.toLowerCase()}`}>
                             {formatarTipo(movimentacao.tipo)}
                           </span>
                         </td>
 
-                        <td>{descricaoOrigem(movimentacao)}</td>
-                        <td>{descricaoDestino(movimentacao)}</td>
+                        <td data-label="Origem">{descricaoOrigem(movimentacao)}</td>
+                        <td data-label="Destino">{descricaoDestino(movimentacao)}</td>
 
-                        <td>
+                        <td data-label="Quantidade">
                           <div className="historico-quantidade">
                             <strong>{movimentacao.quantidade}</strong>
                             <span>un</span>
                           </div>
                         </td>
 
-                        <td>{formatarDinheiro(movimentacao.custo_unitario)}</td>
-                        <td>{movimentacao.observacao || movimentacao.referencia || '-'}</td>
-                        <td>{movimentacao.justificativa || '-'}</td>
+                        <td data-label="Custo Unit.">{formatarDinheiro(movimentacao.custo_unitario)}</td>
+                        <td data-label="Observação">{movimentacao.observacao || movimentacao.referencia || '-'}</td>
+                        <td data-label="Justificativa">{movimentacao.justificativa || '-'}</td>
                       </tr>
                     );
                   })
@@ -2344,7 +2286,7 @@ export default function Estoque({
             </div>
           </section>
 
-          <section className="estoque-filtros-card">
+          <ResponsiveFilters activeCount={[busca, localFiltro, tipoLocalFiltro, situacaoFiltro].filter(Boolean).length} onClear={limparFiltrosEstoque}><section className="estoque-filtros-card">
             <div className="estoque-filtros-header">
               <div>
                 <h3>Consultar estoque</h3>
@@ -2368,20 +2310,7 @@ export default function Estoque({
 
               <div>
                 <label>Unidade</label>
-                <select
-                  value={lojaFiltro}
-                  onChange={(e) => {
-                    setLojaFiltro(e.target.value);
-                    setLocalFiltro('');
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {lojas.map((loja) => (
-                    <option key={loja.id} value={loja.id}>
-                      {loja.nome}
-                    </option>
-                  ))}
-                </select>
+                <input value={lojaAtiva?.nome || ''} readOnly aria-label="Mercado selecionado" />
               </div>
 
               <div>
@@ -2415,32 +2344,32 @@ export default function Estoque({
                 </select>
               </div>
             </div>
-          </section>
+          </section></ResponsiveFilters>
 
           <div className="estoque-lista-info">
             <span>
               <strong>{estoqueFiltrado.length}</strong> posição(ões) de estoque
             </span>
 
-            {(lojaFiltro || localFiltro || tipoLocalFiltro || situacaoFiltro || busca) && (
+            {(localFiltro || tipoLocalFiltro || situacaoFiltro || busca) && (
               <span className="estoque-filtro-ativo">Filtros ativos</span>
             )}
           </div>
 
           <div className="produtos-table estoque-table-card">
-            <table>
+            <table className="mobile-record-table">
               <thead>
                 <tr>
-                  <th>Produto</th>
-                  <th>EAN</th>
-                  <th>Unidade</th>
-                  <th>Local</th>
-                  <th>Tipo</th>
-                  <th>Quantidade</th>
-                  <th>Situação</th>
-                  <th>Custo médio</th>
-                  <th>Valor em custo</th>
-                  <th>Ações</th>
+                  <th scope="col">Produto</th>
+                  <th scope="col">EAN</th>
+                  <th scope="col">Unidade</th>
+                  <th scope="col">Local</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Quantidade</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Custo médio</th>
+                  <th scope="col">Valor em custo</th>
+                  <th scope="col">Ações</th>
                 </tr>
               </thead>
 
@@ -2463,24 +2392,24 @@ export default function Estoque({
 
                     return (
                       <tr key={`${item.produto_id}-${item.loja_id}-${item.local_id}`}>
-                        <td>
+                        <td data-label="Produto">
                           <strong>{item.produto}</strong>
                           {item.marca && <div className="table-secondary-text">{item.marca}</div>}
                         </td>
 
-                        <td>{item.ean}</td>
-                        <td>{item.loja}</td>
-                        <td>{item.local}</td>
+                        <td data-label="EAN">{item.ean}</td>
+                        <td data-label="Unidade">{item.loja}</td>
+                        <td data-label="Local">{item.local}</td>
 
-                        <td>
+                        <td data-label="Tipo">
                           <span className="local-badge">{item.tipo_local}</span>
                         </td>
 
-                        <td>
+                        <td data-label="Quantidade">
                           <strong>{item.quantidade}</strong>
                         </td>
 
-                        <td>
+                        <td data-label="Situação">
                           <span className={`estoque-situacao-badge situacao-${situacao.toLowerCase()}`}>
                             {situacao === 'ZERADO'
                               ? 'Zerado'
@@ -2490,9 +2419,9 @@ export default function Estoque({
                           </span>
                         </td>
 
-                        <td>{formatarDinheiro(item.custo_medio)}</td>
+                        <td data-label="Custo médio">{formatarDinheiro(item.custo_medio)}</td>
 
-                        <td>
+                        <td data-label="Valor em custo">
                           <strong>
                             {formatarDinheiro(
                               Number(item.quantidade || 0) * Number(item.custo_medio || 0)
@@ -2500,7 +2429,7 @@ export default function Estoque({
                           </strong>
                         </td>
 
-                        <td>
+                        <td data-label="Ações">
                           <button
                             type="button"
                             className="editar-button"

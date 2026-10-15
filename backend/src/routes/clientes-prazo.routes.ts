@@ -10,6 +10,7 @@ import {
   buscarClientePrazoPorId,
   listarClientesPrazo,
   registrarRecebimento,
+  cadastrarClientePrazo,
 } from '../services/clientes-prazo.service';
 
 import {
@@ -17,6 +18,11 @@ import {
 } from '../services/auditoria.service';
 
 const router = Router();
+
+router.post('/', permitirPerfis('ADMINISTRADOR','CEO'), async (req, res) => {
+  try { const cliente = await cadastrarClientePrazo(req.body || {}); res.status(201).json({sucesso:true,cliente}); }
+  catch(error: any) { res.status(400).json({sucesso:false,erro:error.message || 'Não foi possível cadastrar o cliente.'}); }
+});
 
 router.get(
   '/',

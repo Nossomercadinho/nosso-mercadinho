@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import db from '../database/database';
 import {
-  permitirPerfis,
+  autorizarModulo,
 } from '../middleware/auth.middleware';
+import { obterUsuarioAcesso, listarLojasPermitidas, lojaPermitida, UsuarioAcesso } from '../services/acessos.service';
+import { garantirEstruturaCaixas, transacaoCaixa } from '../services/caixas.service';
+import { normalizarFormaPagamento } from '../services/vendas.service';
 
 const router = Router();
 
@@ -33,8 +36,25 @@ function all<T = any>(sql: string, params: any[] = []) {
   });
 }
 
-function perfil(req: any) {
-  return String(req.usuario?.perfil || '').toUpperCase();
+async function acesso(req: any) {
+  const usuario = await obterUsuarioAcesso(Number(req.usuario?.id));
+  if (!usuario) throw new Error('Usuário não encontrado ou inativo.');
+  return usuario;
+}
+async function lojaSelecionada(req: any, valor: unknown) {
+  const usuario = await acesso(req);
+  const lojas = await listarLojasPermitidas(usuario);
+  const id = Number(valor || lojas[0]?.id || 0);
+  if (!id || !lojas.some(l => l.id === id)) throw new Error('Você não tem acesso a este mercado.');
+  return id;
+}
+function exigirAcessoVenda(usuario: UsuarioAcesso, venda: any) {
+  if (!lojaPermitida(usuario, Number(venda.loja_id))) throw new Error('Você não tem acesso ao mercado desta venda.');
+}
+async function exigirCaixaEditavel(venda: any) {
+  if (!venda.caixa_sessao_id) return;
+  const caixa = await get<any>('SELECT status FROM caixas_sessoes WHERE id = ?', [venda.caixa_sessao_id]);
+  if (!caixa || caixa.status !== 'ABERTO') throw new Error('Esta venda pertence a um caixa encerrado. O fechamento e seu histórico devem ser preservados.');
 }
 
 function usuarioId(req: any) {
@@ -46,6 +66,7 @@ function arredondar(n: number) {
 }
 
 async function garantirEstrutura() {
+  await garantirEstruturaCaixas();
   await run(`
     CREATE TABLE IF NOT EXISTS vendas_correcoes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,27 +107,25 @@ async function garantirEstrutura() {
   `);
 }
 
-function restricaoLoja(req: any) {
-  return perfil(req) === 'CAIXA' ? 1 : null;
-}
-
 router.get(
   '/',
-  permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     try {
       await garantirEstrutura();
 
-      const lojaForcada = restricaoLoja(req);
+      const usuario = await acesso(req);
+      const lojas = await listarLojasPermitidas(usuario);
       const dataInicio = String(req.query.dataInicio || '').trim();
       const dataFim = String(req.query.dataFim || '').trim();
       const forma = String(req.query.formaPagamento || '').trim();
       const status = String(req.query.status || '').trim();
       const executorId = Number(req.query.executorId || 0);
-      const lojaId = lojaForcada || Number(req.query.lojaId || 0);
+      const lojaId = Number(req.query.lojaId || 0);
+      if (lojaId && !lojas.some(l => l.id === lojaId)) return res.status(403).json({ sucesso: false, erro: 'Você não tem acesso a este mercado.' });
 
-      const where: string[] = ['1 = 1'];
-      const params: any[] = [];
+      const where: string[] = [lojas.length ? `v.loja_id IN (${lojas.map(() => '?').join(',')})` : '1 = 0'];
+      const params: any[] = lojas.map(l => l.id);
 
       if (lojaId) {
         where.push('v.loja_id = ?');
@@ -164,7 +183,7 @@ router.get(
           LEFT JOIN venda_pagamentos vp ON vp.venda_id = v.id
           LEFT JOIN venda_itens vi ON vi.venda_id = v.id
           WHERE ${where.join(' AND ')}
-          GROUP BY v.id
+          GROUP BY v.id, l.nome, u.nome, e.nome
           ORDER BY v.criado_em DESC, v.id DESC
           LIMIT 1000
         `,
@@ -222,7 +241,7 @@ router.get(
 
 router.get(
   '/caixa-diario',
-  permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     try {
       await garantirEstrutura();
@@ -235,12 +254,7 @@ router.get(
         });
       }
 
-      // CAIXA sempre consulta a Matriz. ADMIN/CEO podem informar outra loja;
-      // na tela atual de Vendas, a Matriz continua sendo a unidade padrão.
-      const lojaId =
-        perfil(req) === 'CAIXA'
-          ? 1
-          : Number(req.query.lojaId || 1);
+      const lojaId = await lojaSelecionada(req, req.query.lojaId);
 
       const registro = await get<any>(
         `
@@ -283,7 +297,7 @@ router.get(
 
 router.put(
   '/caixa-diario',
-  permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     try {
       await garantirEstrutura();
@@ -305,10 +319,7 @@ router.put(
         });
       }
 
-      const lojaId =
-        perfil(req) === 'CAIXA'
-          ? 1
-          : Number(req.body?.lojaId || 1);
+      const lojaId = await lojaSelecionada(req, req.body?.lojaId);
 
       await run(
         `
@@ -366,12 +377,12 @@ router.put(
 
 router.get(
   '/:id',
-  permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     try {
       await garantirEstrutura();
       const id = Number(req.params.id);
-      const lojaForcada = restricaoLoja(req);
+      const usuario = await acesso(req);
 
       const venda = await get<any>(
         `
@@ -398,9 +409,7 @@ router.get(
       if (!venda) {
         return res.status(404).json({ sucesso: false, erro: 'Venda não encontrada.' });
       }
-      if (lojaForcada && Number(venda.loja_id) !== lojaForcada) {
-        return res.status(403).json({ sucesso: false, erro: 'Venda fora da Matriz.' });
-      }
+      if (!lojaPermitida(usuario, Number(venda.loja_id))) return res.status(403).json({ sucesso: false, erro: 'Você não tem acesso ao mercado desta venda.' });
 
       const itens = await all<any>(
         `
@@ -456,12 +465,12 @@ router.get(
 
 router.put(
   '/:id/corrigir',
-  permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     const id = Number(req.params.id);
     const motivo = String(req.body?.motivo || '').trim();
     const itensEntrada = Array.isArray(req.body?.itens) ? req.body.itens : [];
-    const formaPagamento = String(req.body?.formaPagamento || '').trim().toUpperCase();
+    const formaPagamento = normalizarFormaPagamento(req.body?.formaPagamento);
 
     if (motivo.length < 5) {
       return res.status(400).json({
@@ -472,13 +481,14 @@ router.put(
     if (!itensEntrada.length) {
       return res.status(400).json({ sucesso: false, erro: 'A venda precisa ter itens.' });
     }
-    if (!formaPagamento) {
+    if (!['DINHEIRO','PIX','DEBITO','CREDITO','A_PRAZO'].includes(formaPagamento)) {
       return res.status(400).json({ sucesso: false, erro: 'Informe a forma de pagamento.' });
     }
 
     try {
       await garantirEstrutura();
 
+      const resultado = await transacaoCaixa(async () => {
       const venda = await get<any>('SELECT * FROM vendas WHERE id = ?', [id]);
       if (!venda) {
         return res.status(404).json({ sucesso: false, erro: 'Venda não encontrada.' });
@@ -486,9 +496,8 @@ router.put(
       if (venda.status !== 'CONCLUIDA') {
         return res.status(400).json({ sucesso: false, erro: 'Somente vendas concluídas podem ser corrigidas.' });
       }
-      if (perfil(req) === 'CAIXA' && Number(venda.loja_id) !== 1) {
-        return res.status(403).json({ sucesso: false, erro: 'O caixa só pode corrigir vendas da Matriz.' });
-      }
+      exigirAcessoVenda(await acesso(req), venda);
+      await exigirCaixaEditavel(venda);
 
       const itensAtuais = await all<any>(
         'SELECT * FROM venda_itens WHERE venda_id = ? ORDER BY id',
@@ -498,6 +507,10 @@ router.put(
         'SELECT * FROM venda_pagamentos WHERE venda_id = ? ORDER BY id',
         [id]
       );
+
+      if (itensEntrada.length !== itensAtuais.length || new Set(itensEntrada.map((i: any) => Number(i.id))).size !== itensAtuais.length) {
+        throw new Error('Informe cada item da venda uma única vez para realizar a correção.');
+      }
 
       const mapaAtual = new Map(itensAtuais.map((i) => [Number(i.id), i]));
       let novoTotal = 0;
@@ -563,9 +576,6 @@ router.put(
         contaReceber: conta || null,
       };
 
-      await run('BEGIN IMMEDIATE TRANSACTION');
-
-      try {
         for (const entrada of itensEntrada) {
           const item = mapaAtual.get(Number(entrada.id));
           const antiga = Number(item.quantidade);
@@ -728,18 +738,14 @@ router.put(
           ]
         );
 
-        await run('COMMIT');
-
-        res.json({
+        return {
           sucesso: true,
           mensagem: 'Venda corrigida com histórico preservado.',
           vendaId: id,
           valorTotal: novoTotal,
-        });
-      } catch (error) {
-        try { await run('ROLLBACK'); } catch {}
-        throw error;
-      }
+        };
+      });
+      if (!res.headersSent) res.json(resultado);
     } catch (error: any) {
       res.status(400).json({
         sucesso: false,
@@ -751,7 +757,7 @@ router.put(
 
 router.post(
   '/:id/cancelar',
-  permitirPerfis('ADMINISTRADOR', 'CEO'),
+  autorizarModulo('vendas'),
   async (req: any, res) => {
     const id = Number(req.params.id);
     const motivo = String(req.body?.motivo || '').trim();
@@ -765,10 +771,13 @@ router.post(
 
     try {
       await garantirEstrutura();
+      const resultado = await transacaoCaixa(async () => {
       const venda = await get<any>('SELECT * FROM vendas WHERE id = ?', [id]);
       if (!venda) {
         return res.status(404).json({ sucesso: false, erro: 'Venda não encontrada.' });
       }
+      exigirAcessoVenda(await acesso(req), venda);
+      await exigirCaixaEditavel(venda);
       if (venda.status === 'CANCELADA') {
         return res.status(400).json({ sucesso: false, erro: 'Venda já cancelada.' });
       }
@@ -786,8 +795,6 @@ router.post(
         });
       }
 
-      await run('BEGIN IMMEDIATE TRANSACTION');
-      try {
         for (const item of itens) {
           let saldo = await get<any>(
             `
@@ -854,12 +861,9 @@ router.post(
           ]
         );
 
-        await run('COMMIT');
-        res.json({ sucesso: true, mensagem: 'Venda cancelada e estoque estornado.' });
-      } catch (error) {
-        try { await run('ROLLBACK'); } catch {}
-        throw error;
-      }
+        return { sucesso: true, mensagem: 'Venda cancelada e estoque estornado.' };
+      });
+      if (!res.headersSent) res.json(resultado);
     } catch (error: any) {
       res.status(400).json({
         sucesso: false,

@@ -1,8 +1,12 @@
+import { comBloqueioBanco } from './caixas.service';
+import { garantirVinculosCadastros, lojaCadastroAtual, vincularCadastroNaLoja } from './cadastros-lojas.service';
 import db from '../database/database';
+import { escopoLojaSql } from './escopo-lojas.service';
 
 import {
   buscarFornecedorPorCpfCnpj,
   criarFornecedor,
+  registrarPrecoFornecedor,
 } from './fornecedores.service';
 
 type XmlObjeto = Record<string, any>;
@@ -555,7 +559,8 @@ function extrairFornecedor(
 async function localizarOuCriarFornecedor(
   dados: ReturnType<
     typeof extrairFornecedor
-  >
+  >,
+  lojaId: number
 ) {
   const existente =
     await buscarFornecedorPorCpfCnpj(
@@ -563,6 +568,7 @@ async function localizarOuCriarFornecedor(
     );
 
   if (existente) {
+    await vincularCadastroNaLoja('fornecedor',Number(existente.id),lojaId);
     return {
       fornecedor: existente,
       criado: false,
@@ -571,6 +577,7 @@ async function localizarOuCriarFornecedor(
 
   const fornecedor =
     await criarFornecedor({
+      lojaId,
       empresaId: 1,
 
       tipoPessoa:
@@ -668,6 +675,8 @@ async function buscarProdutoPorEan(
         FROM produtos
 
         WHERE ean = ?
+          AND EXISTS (SELECT 1 FROM produtos_lojas pl_ativo WHERE pl_ativo.produto_id = produtos.id
+            AND pl_ativo.ativo = 1 AND ${escopoLojaSql('pl_ativo.loja_id')})
 
         LIMIT 1
       `,
@@ -987,9 +996,18 @@ async function buscarNotaPorChave(
 |--------------------------------------------------------------------------
 */
 
-export async function importarNfeXml(
+async function importarNfeXmlImpl(
   dados: ImportarNfePayload
 ) {
+  await garantirVinculosCadastros();
+  for (const tabela of ['notas_entrada','notas_entrada_itens']) {
+    const colunas = await executarAll<any>(`PRAGMA table_info(${tabela})`);
+    if (!colunas.some(c => c.name === 'valor_outros')) {
+      await executarRun(`ALTER TABLE ${tabela} ADD COLUMN valor_outros REAL DEFAULT 0`);
+      if (colunas.some(c => c.name === 'valor_outras_despesas')) await executarRun(`UPDATE ${tabela} SET valor_outros = COALESCE(valor_outras_despesas,0)`);
+    }
+  }
+  dados = { ...dados, lojaId: lojaCadastroAtual(Number(dados.lojaId)||undefined) };
   const xmlObjeto =
     await parsearXml(
       dados.xml
@@ -1029,7 +1047,8 @@ export async function importarNfeXml(
 
   const fornecedorResultado =
     await localizarOuCriarFornecedor(
-      fornecedorXml
+      fornecedorXml,
+      Number(dados.lojaId)
     );
 
   const fornecedor: any =
@@ -1078,7 +1097,7 @@ export async function importarNfeXml(
             valor_frete,
             valor_seguro,
             valor_desconto,
-            valor_outras_despesas,
+            valor_outros,
             valor_icms,
             valor_ipi,
             valor_pis,
@@ -1200,7 +1219,7 @@ export async function importarNfeXml(
             valor_desconto,
             valor_frete,
             valor_seguro,
-            valor_outras_despesas,
+            valor_outros,
             valor_icms,
             valor_ipi,
             valor_pis,
@@ -1281,7 +1300,7 @@ export async function importarNfeXml(
             ?,
             ?,
             ?,
-            'ABERTA'
+            'PENDENTE'
           )
         `,
         [
@@ -1393,6 +1412,8 @@ export async function listarNotasEntrada(
     `
       SELECT
         n.id,
+        n.loja_id,
+        n.local_estoque_id,
         n.chave_nfe,
         n.numero_nota,
         n.serie,
@@ -1452,6 +1473,8 @@ export async function listarNotasEntrada(
       LEFT JOIN locais_estoque le
         ON le.id =
           n.local_estoque_id
+
+      WHERE ${escopoLojaSql('n.loja_id')}
 
       ORDER BY
         n.id DESC
@@ -1516,6 +1539,7 @@ export async function buscarNotaEntradaPorId(
 
         WHERE
           n.id = ?
+          AND ${escopoLojaSql('n.loja_id')}
 
         LIMIT 1
       `,
@@ -1593,7 +1617,7 @@ export async function buscarNotaEntradaPorId(
 |--------------------------------------------------------------------------
 */
 
-export async function vincularItemNotaProduto(
+async function vincularItemNotaProdutoImpl(
   notaItemId: number,
   produtoId: number
 ) {
@@ -1606,6 +1630,7 @@ export async function vincularItemNotaProduto(
         FROM notas_entrada_itens
 
         WHERE id = ?
+          AND EXISTS (SELECT 1 FROM notas_entrada n_ativa WHERE n_ativa.id = notas_entrada_itens.nota_entrada_id AND ${escopoLojaSql('n_ativa.loja_id')})
 
         LIMIT 1
       `,
@@ -1629,6 +1654,8 @@ export async function vincularItemNotaProduto(
         FROM produtos
 
         WHERE id = ?
+          AND EXISTS (SELECT 1 FROM produtos_lojas pl_ativo WHERE pl_ativo.produto_id = produtos.id
+            AND pl_ativo.ativo = 1 AND ${escopoLojaSql('pl_ativo.loja_id')})
 
         LIMIT 1
       `,
@@ -1692,7 +1719,7 @@ export async function vincularItemNotaProduto(
 |
 */
 
-export async function efetivarNotaEntrada(
+async function efetivarNotaEntradaImpl(
   notaEntradaId: number,
   usuarioId?: number | null
 ) {
@@ -1711,6 +1738,7 @@ export async function efetivarNotaEntrada(
         FROM notas_entrada
 
         WHERE id = ?
+          AND ${escopoLojaSql('loja_id')}
 
         LIMIT 1
       `,
@@ -2120,271 +2148,14 @@ export async function efetivarNotaEntrada(
       |--------------------------------------------------------------------------
       */
 
-      await executarRun(
-        `
-          INSERT INTO fornecedor_precos_historico (
-            fornecedor_id,
-
-            produto_id,
-
-            custo_unitario,
-
-            quantidade,
-
-            numero_nota,
-
-            chave_nfe,
-
-            data_compra,
-
-            observacao
-          )
-
-          VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            COALESCE(
-              ?,
-              CURRENT_TIMESTAMP
-            ),
-            ?
-          )
-        `,
-        [
-          nota.fornecedor_id,
-
-          produtoId,
-
-          custoUnitario,
-
-          quantidadeEntrada,
-
-          nota.numero_nota,
-
-          nota.chave_nfe,
-
-          nota.data_emissao || null,
-
-          'Preço registrado automaticamente pela efetivação da NF-e.',
-        ]
-      );
-
-      /*
-      |--------------------------------------------------------------------------
-      | FORNECEDOR X PRODUTO
-      |--------------------------------------------------------------------------
-      */
-
-      const fornecedorProduto: any =
-        await executarGet(
-          `
-            SELECT
-              *
-
-            FROM fornecedor_produtos
-
-            WHERE
-              fornecedor_id = ?
-              AND produto_id = ?
-
-            LIMIT 1
-          `,
-          [
-            nota.fornecedor_id,
-            produtoId,
-          ]
-        );
-
-      if (
-        fornecedorProduto
-      ) {
-        const qtdHistorica =
-          Number(
-            fornecedorProduto
-              .quantidade_comprada ||
-              0
-          );
-
-        const custoMedioHistorico =
-          Number(
-            fornecedorProduto
-              .custo_medio ||
-              0
-          );
-
-        const novaQtdHistorica =
-          qtdHistorica +
-          quantidadeEntrada;
-
-        let novoCustoMedioFornecedor =
-          custoUnitario;
-
-        if (
-          novaQtdHistorica > 0
-        ) {
-          novoCustoMedioFornecedor =
-            (
-              qtdHistorica *
-                custoMedioHistorico +
-              quantidadeEntrada *
-                custoUnitario
-            ) /
-            novaQtdHistorica;
-        }
-
-        let menorCusto =
-          Number(
-            fornecedorProduto
-              .menor_custo ||
-              0
-          );
-
-        let maiorCusto =
-          Number(
-            fornecedorProduto
-              .maior_custo ||
-              0
-          );
-
-        if (
-          menorCusto <= 0 ||
-          custoUnitario <
-            menorCusto
-        ) {
-          menorCusto =
-            custoUnitario;
-        }
-
-        if (
-          custoUnitario >
-          maiorCusto
-        ) {
-          maiorCusto =
-            custoUnitario;
-        }
-
-        await executarRun(
-          `
-            UPDATE fornecedor_produtos
-
-            SET
-              codigo_produto_fornecedor =
-                COALESCE(
-                  ?,
-                  codigo_produto_fornecedor
-                ),
-
-              ultimo_custo = ?,
-
-              menor_custo = ?,
-
-              maior_custo = ?,
-
-              custo_medio = ?,
-
-              quantidade_comprada = ?,
-
-              ultima_compra_em =
-                COALESCE(
-                  ?,
-                  CURRENT_TIMESTAMP
-                ),
-
-              atualizado_em =
-                CURRENT_TIMESTAMP
-
-            WHERE
-              fornecedor_id = ?
-              AND produto_id = ?
-          `,
-          [
-            item.codigo_fornecedor ||
-              null,
-
-            custoUnitario,
-
-            menorCusto,
-
-            maiorCusto,
-
-            novoCustoMedioFornecedor,
-
-            novaQtdHistorica,
-
-            nota.data_emissao ||
-              null,
-
-            nota.fornecedor_id,
-
-            produtoId,
-          ]
-        );
-      } else {
-        await executarRun(
-          `
-            INSERT INTO fornecedor_produtos (
-              fornecedor_id,
-
-              produto_id,
-
-              codigo_produto_fornecedor,
-
-              ultimo_custo,
-
-              menor_custo,
-
-              maior_custo,
-
-              custo_medio,
-
-              quantidade_comprada,
-
-              ultima_compra_em
-            )
-
-            VALUES (
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              COALESCE(
-                ?,
-                CURRENT_TIMESTAMP
-              )
-            )
-          `,
-          [
-            nota.fornecedor_id,
-
-            produtoId,
-
-            item.codigo_fornecedor ||
-              null,
-
-            custoUnitario,
-
-            custoUnitario,
-
-            custoUnitario,
-
-            custoUnitario,
-
-            quantidadeEntrada,
-
-            nota.data_emissao ||
-              null,
-          ]
-        );
-      }
-
+      await registrarPrecoFornecedor({
+        fornecedorId: Number(nota.fornecedor_id), produtoId, lojaId: Number(nota.loja_id),
+        codigoProdutoFornecedor: item.codigo_fornecedor || undefined,
+        custoUnitario, quantidade: quantidadeEntrada,
+        numeroNota: nota.numero_nota || undefined, chaveNfe: nota.chave_nfe || undefined,
+        dataCompra: nota.data_emissao || undefined,
+        observacao: 'Preço registrado automaticamente pela efetivação da NF-e.',
+      });
       /*
       |--------------------------------------------------------------------------
       | SINCRONIZAR PRODUTO
@@ -2512,3 +2283,9 @@ export async function efetivarNotaEntrada(
     notaEntradaId
   );
 }
+
+export function importarNfeXml(...args: Parameters<typeof importarNfeXmlImpl>) { return comBloqueioBanco(() => importarNfeXmlImpl(...args)); }
+
+export function vincularItemNotaProduto(...args: Parameters<typeof vincularItemNotaProdutoImpl>) { return comBloqueioBanco(() => vincularItemNotaProdutoImpl(...args)); }
+
+export function efetivarNotaEntrada(...args: Parameters<typeof efetivarNotaEntradaImpl>) { return comBloqueioBanco(() => efetivarNotaEntradaImpl(...args)); }

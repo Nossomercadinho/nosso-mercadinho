@@ -1,4 +1,7 @@
 import db from '../database/database';
+import { escopoLojaSql } from './escopo-lojas.service';
+import { garantirVinculosCadastros, cadastroVisivelSql, lojaCadastroAtual, vincularCadastroNaLoja } from './cadastros-lojas.service';
+import { comBloqueioBanco } from './caixas.service';
 
 function run(sql: string, params: any[] = []) {
   return new Promise<{ lastID: number; changes: number }>((resolve, reject) => {
@@ -112,6 +115,7 @@ async function garantirEstrutura() {
   await run(
     'CREATE INDEX IF NOT EXISTS idx_recebimentos_conta ON contas_receber_recebimentos(conta_receber_id)'
   );
+  await garantirVinculosCadastros();
 }
 
 export async function listarClientesPrazo(termo = '') {
@@ -136,13 +140,15 @@ export async function listarClientesPrazo(termo = '') {
         COALESCE(SUM(cr.valor_original), 0) AS totalComprado,
         COALESCE(SUM(cr.valor_pago), 0) AS totalPago,
         COALESCE(SUM(cr.saldo), 0) AS saldoDevedor,
-        MAX(0, COALESCE(c.limite_credito, 0) - COALESCE(SUM(cr.saldo), 0)) AS limiteDisponivel,
+        MAX(0, COALESCE(c.limite_credito, 0) - COALESCE((SELECT SUM(cr_global.saldo) FROM contas_receber cr_global WHERE cr_global.cliente_id = c.id), 0)) AS limiteDisponivel,
         SUM(CASE WHEN cr.status = 'ABERTO' THEN 1 ELSE 0 END) AS contasAbertas,
         SUM(CASE WHEN cr.status = 'PARCIAL' THEN 1 ELSE 0 END) AS contasParciais
       FROM clientes c
       LEFT JOIN contas_receber cr
         ON cr.cliente_id = c.id
+        AND EXISTS (SELECT 1 FROM vendas v_escopo WHERE v_escopo.id = cr.venda_id AND ${escopoLojaSql('v_escopo.loja_id')})
       WHERE c.ativo = 1
+        AND ${cadastroVisivelSql('cliente','c.id')}
         AND (
           ? = ''
           OR UPPER(c.nome) LIKE UPPER(?)
@@ -174,11 +180,13 @@ export async function buscarClientePrazoPorId(clienteId: number) {
         COALESCE(SUM(cr.valor_original), 0) AS totalComprado,
         COALESCE(SUM(cr.valor_pago), 0) AS totalPago,
         COALESCE(SUM(cr.saldo), 0) AS saldoDevedor,
-        MAX(0, COALESCE(c.limite_credito, 0) - COALESCE(SUM(cr.saldo), 0)) AS limiteDisponivel
+        MAX(0, COALESCE(c.limite_credito, 0) - COALESCE((SELECT SUM(cr_global.saldo) FROM contas_receber cr_global WHERE cr_global.cliente_id = c.id), 0)) AS limiteDisponivel
       FROM clientes c
       LEFT JOIN contas_receber cr
         ON cr.cliente_id = c.id
+        AND EXISTS (SELECT 1 FROM vendas v_escopo WHERE v_escopo.id = cr.venda_id AND ${escopoLojaSql('v_escopo.loja_id')})
       WHERE c.id = ?
+        AND ${cadastroVisivelSql('cliente','c.id')}
       GROUP BY c.id
     `,
     [clienteId]
@@ -211,6 +219,7 @@ export async function buscarClientePrazoPorId(clienteId: number) {
       LEFT JOIN executores e
         ON e.id = v.executor_id
       WHERE cr.cliente_id = ?
+        AND ${escopoLojaSql('v.loja_id')}
       ORDER BY cr.criado_em DESC, cr.id DESC
     `,
     [clienteId]
@@ -234,6 +243,7 @@ export async function buscarClientePrazoPorId(clienteId: number) {
       LEFT JOIN usuarios u
         ON u.id = r.usuario_id
       WHERE r.cliente_id = ?
+        AND EXISTS (SELECT 1 FROM vendas v_escopo WHERE v_escopo.id = r.venda_id AND ${escopoLojaSql('v_escopo.loja_id')})
       ORDER BY r.recebido_em DESC, r.id DESC
     `,
     [clienteId]
@@ -259,7 +269,7 @@ export async function atualizarLimiteCreditoCliente(
   if (limite < 0) throw new Error('O limite de crédito não pode ser negativo.');
 
   const cliente = await get<any>(
-    'SELECT id FROM clientes WHERE id = ? LIMIT 1',
+    `SELECT id FROM clientes WHERE id = ? AND ${cadastroVisivelSql('cliente','clientes.id')} LIMIT 1`,
     [id]
   );
 
@@ -275,18 +285,23 @@ export async function atualizarLimiteCreditoCliente(
   const saldo = await get<any>(
     `SELECT COALESCE(SUM(saldo), 0) AS saldoDevedor
      FROM contas_receber
-     WHERE cliente_id = ? AND status <> 'PAGO'`,
+     WHERE cliente_id = ? AND status <> 'PAGO'
+       AND EXISTS (SELECT 1 FROM vendas v_escopo WHERE v_escopo.id = contas_receber.venda_id AND ${escopoLojaSql('v_escopo.loja_id')})`,
     [id]
   );
 
   const saldoDevedor = arredondar(numero(saldo?.saldoDevedor));
+  // The credit limit belongs to the customer across all markets. Expose only
+  // the remaining allowance; debt details stay restricted to permitted stores.
+  const credito = await get<any>('SELECT COALESCE(SUM(saldo), 0) AS comprometido FROM contas_receber WHERE cliente_id = ?', [id]);
+  const comprometido = arredondar(numero(credito?.comprometido));
 
   return {
     clienteId: id,
     limiteCredito: limite,
     saldoDevedor,
-    limiteDisponivel: arredondar(Math.max(0, limite - saldoDevedor)),
-    bloqueado: saldoDevedor >= limite,
+    limiteDisponivel: arredondar(Math.max(0, limite - comprometido)),
+    bloqueado: comprometido >= limite,
   };
 }
 
@@ -298,7 +313,7 @@ type RecebimentoEntrada = {
   observacao?: string;
 };
 
-export async function registrarRecebimento(
+async function registrarRecebimentoImpl(
   contaReceberId: number,
   dados: RecebimentoEntrada
 ) {
@@ -329,6 +344,7 @@ export async function registrarRecebimento(
         cr.status
       FROM contas_receber cr
       WHERE cr.id = ?
+        AND EXISTS (SELECT 1 FROM vendas v_escopo WHERE v_escopo.id = cr.venda_id AND ${escopoLojaSql('v_escopo.loja_id')})
       LIMIT 1
     `,
     [contaReceberId]
@@ -412,4 +428,22 @@ export async function registrarRecebimento(
     } catch {}
     throw error;
   }
+}
+
+export async function cadastrarClientePrazo(dados: any) {
+  await garantirEstrutura();
+  return comBloqueioBanco(async () => {
+    const lojaId = lojaCadastroAtual(dados.lojaId);
+    const nome = String(dados.nome || '').trim(), cpf = somenteNumeros(dados.cpf), telefone = somenteNumeros(dados.telefone);
+    if (nome.length < 3 || cpf.length !== 11 || telefone.length < 10 || telefone.length > 11) throw new Error('Informe nome, CPF com 11 dígitos e telefone válido.');
+    const limite = Number(dados.limiteCredito ?? 0);
+    if (!Number.isFinite(limite) || limite < 0) throw new Error('Informe um limite de crédito válido.');
+    let cliente = await get<any>('SELECT id FROM clientes WHERE cpf = ?', [cpf]);
+    if (!cliente) cliente = { id: (await run('INSERT INTO clientes(nome,cpf,telefone,limite_credito) VALUES (?,?,?,?)',[nome,cpf,telefone,arredondar(limite)])).lastID };
+    await vincularCadastroNaLoja('cliente', Number(cliente.id), lojaId);
+    return (await buscarClientePrazoPorId(Number(cliente.id))).cliente;
+  });
+}
+export function registrarRecebimento(...args: Parameters<typeof registrarRecebimentoImpl>) {
+  return comBloqueioBanco(() => registrarRecebimentoImpl(...args));
 }

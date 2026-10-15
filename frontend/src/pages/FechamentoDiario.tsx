@@ -1,4 +1,6 @@
+import { apiFetch } from '../services/apiClient';
 import { useEffect, useState } from 'react';
+import { useLoja } from '../contexts/LojaContext';
 
 const API = '/api';
 
@@ -14,7 +16,7 @@ function fetchAuth(url: string, init: RequestInit = {}) {
   const token = localStorage.getItem('token');
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (init.body) headers.set('Content-Type', 'application/json');
-  return fetch(url, { ...init, headers });
+  return apiFetch(url, { ...init, headers });
 }
 const vazio = () => ({
   dinheiro: '', pix: '', debito: '', credito: '', aPrazo: '', outros: '',
@@ -22,6 +24,7 @@ const vazio = () => ({
 });
 
 export default function FechamentoDiario() {
+  const { lojaAtiva } = useLoja();
   const [data, setData] = useState(hoje());
   const [form, setForm] = useState<any>(vazio());
   const [executores, setExecutores] = useState<any[]>([]);
@@ -41,15 +44,18 @@ export default function FechamentoDiario() {
   }, []);
 
   async function carregarExecutores() {
-    const r = await fetchAuth(`${API}/fechamento-diario/executores`);
-    const d = await r.json();
-    if (r.ok && d.sucesso) setExecutores(d.executores || []);
+    try {
+      const r = await fetchAuth(`${API}/fechamento-diario/executores`);
+      const d = await r.json();
+      if (!r.ok || !d.sucesso) throw new Error(d.erro || 'Erro ao carregar executores.');
+      setExecutores(d.executores || []);
+    } catch (error) { setErro(error instanceof Error ? error.message : 'Erro ao carregar executores.'); }
   }
 
   async function carregarData(dia: string) {
     setErro(''); setMensagem('');
     try {
-      const r = await fetchAuth(`${API}/fechamento-diario?data=${dia}`);
+      const r = await fetchAuth(`${API}/fechamento-diario?data=${dia}&lojaId=${lojaAtiva?.id || ''}`);
       const d = await r.json();
       if (!r.ok || !d.sucesso) throw new Error(d.erro || 'Erro ao consultar.');
       if (!d.fechamento) {
@@ -76,7 +82,7 @@ export default function FechamentoDiario() {
 
   async function carregarHistorico() {
     try {
-      const r = await fetchAuth(`${API}/fechamento-diario`);
+      const r = await fetchAuth(`${API}/fechamento-diario?lojaId=${lojaAtiva?.id || ''}`);
       const d = await r.json();
       if (r.ok && d.sucesso) setHistorico(d.fechamentos || []);
     } catch {}
@@ -89,6 +95,7 @@ export default function FechamentoDiario() {
 
   async function salvar() {
     setErro(''); setMensagem('');
+    if (!lojaAtiva) { setErro('Selecione um mercado no topo do sistema.'); return; }
     let motivoAlteracao = '';
     if (jaExiste) {
       motivoAlteracao = window.prompt('Informe o motivo da alteração deste fechamento:') || '';
@@ -104,7 +111,7 @@ export default function FechamentoDiario() {
         method: 'PUT',
         body: JSON.stringify({
           dataReferencia: data,
-          lojaId: 1,
+          lojaId: lojaAtiva.id,
           dinheiro: Number(form.dinheiro || 0),
           pix: Number(form.pix || 0),
           debito: Number(form.debito || 0),
@@ -133,7 +140,7 @@ export default function FechamentoDiario() {
   };
 
   return (
-    <div>
+    <div className="module-page fechamento-page">
       <div className="page-header">
         <div>
           <h1>Fechamento Diário</h1>
@@ -144,9 +151,10 @@ export default function FechamentoDiario() {
       {erro && <div style={{marginTop:16,padding:12,background:'#fff2f2',borderRadius:10,color:'#b42318'}}>{erro}</div>}
       {mensagem && <div style={{marginTop:16,padding:12,background:'#f2fff5',borderRadius:10}}>{mensagem}</div>}
 
-      <div style={{display:'grid',gridTemplateColumns:'minmax(480px,1fr) minmax(380px,.8fr)',gap:18,marginTop:18,alignItems:'start'}}>
+      <div className="module-grid">
         <section style={card}>
-          <h2 style={{marginTop:0}}>Lançamento manual — Matriz</h2>
+          <h2 style={{marginTop:0}}>Lançamento manual</h2>
+          <p className="active-store-note">{lojaAtiva?.nome}</p>
 
           <label>Data
             <input type="date" value={data} onChange={(e) => {
@@ -154,7 +162,7 @@ export default function FechamentoDiario() {
             }} style={{display:'block',marginTop:5,marginBottom:15}} />
           </label>
 
-          <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(160px,1fr))',gap:12}}>
+          <div className="module-fields">
             {[
               ['dinheiro','Dinheiro'],['pix','PIX'],['debito','Débito'],
               ['credito','Crédito'],['aPrazo','A Prazo'],['outros','Outros']
@@ -187,7 +195,7 @@ export default function FechamentoDiario() {
               style={{display:'block',width:'100%',minHeight:80,boxSizing:'border-box',marginTop:5}} />
           </label>
 
-          <button type="button" onClick={salvar} disabled={salvando}
+          <button className="module-save" type="button" onClick={salvar} disabled={salvando}
             style={{width:'100%',marginTop:16,padding:11}}>
             {salvando ? 'Salvando...' : jaExiste ? 'Salvar alteração' : 'Salvar fechamento'}
           </button>

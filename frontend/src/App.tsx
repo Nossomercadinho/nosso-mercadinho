@@ -5,6 +5,7 @@ import {
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import { LojaProvider } from './contexts/LojaContext';
 
 const API =
   '/api';
@@ -87,6 +88,7 @@ function App() {
   }
 
   function limparSessao() {
+    localStorage.removeItem('nm-loja-ativa');
     localStorage.removeItem(
       'usuarioLogado'
     );
@@ -125,10 +127,7 @@ function App() {
 
   if (logado) {
     return (
-      <Dashboard
-        onLogout={fazerLogout}
-        modoPdvDireto={rotaPdv}
-      />
+      <LojaProvider><Dashboard onLogout={fazerLogout} modoPdvDireto={rotaPdv} /></LojaProvider>
     );
   }
 

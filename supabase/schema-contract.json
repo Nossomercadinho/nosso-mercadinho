@@ -1,0 +1,3731 @@
+{
+  "version": 1,
+  "schema": "public",
+  "dateStorage": "text",
+  "numberStorage": "numeric",
+  "applicationAuth": "express-jwt",
+  "tables": [
+    {
+      "name": "clientes",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cpf",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "limite_credito",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "empresas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "financeiro_categorias",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "nullable": false,
+          "default": "'AMBOS'"
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fornecedores",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tipo_pessoa",
+          "type": "text",
+          "nullable": true,
+          "default": "'JURIDICA'"
+        },
+        {
+          "name": "nome_fantasia",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cpf_cnpj",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "inscricao_estadual",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "inscricao_municipal",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "whatsapp",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "site",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "contato_nome",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "contato_cargo",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "contato_telefone",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "contato_email",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "endereco",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "complemento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "prazo_pagamento_dias",
+          "type": "integer",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "lojas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "codigo",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "nullable": true,
+          "default": "'FILIAL'"
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "endereco",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "complemento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "clientes_lojas",
+      "identityColumn": null,
+      "columns": [
+        {
+          "name": "cliente_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "cliente_id",
+        "loja_id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "cliente_id",
+          "table": "clientes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fornecedores_lojas",
+      "identityColumn": null,
+      "columns": [
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "dados_json",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "fornecedor_id",
+        "loja_id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "locais_estoque",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "permite_venda",
+          "type": "integer",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "migracoes_cadastros_lojas",
+      "identityColumn": null,
+      "columns": [
+        {
+          "name": "chave",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "chave"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "papeis_acesso",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "permissoes",
+          "type": "text",
+          "nullable": false,
+          "default": "'[]'"
+        },
+        {
+          "name": "sistema",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "acesso_todas_lojas",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "produtos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ean",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "marca",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "foto",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fornecedor",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "preco_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "preco_venda",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "estoque",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "estoque_minimo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "unidade_medida",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ncm",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cest",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "descricao_ncm",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": []
+    },
+    {
+      "name": "estoque_saldos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "local_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "custo_medio",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "local_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fornecedor_precos_historico",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "custo_unitario",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "numero_nota",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "chave_nfe",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "data_compra",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fornecedor_produtos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "codigo_produto_fornecedor",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ultimo_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "menor_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "maior_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "custo_medio",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "quantidade_comprada",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "ultima_compra_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fornecedor_produtos_lojas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "codigo_produto_fornecedor",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ultimo_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "menor_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "maior_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "custo_medio",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "quantidade_comprada",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "ultima_compra_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "produtos_lojas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "preco_venda",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "estoque_minimo",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "precos_personalizados",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "preco_custo",
+          "type": "numeric",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "usuarios",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "senha",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "perfil",
+          "type": "text",
+          "nullable": false,
+          "default": "'OPERADOR'"
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "papel_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "papel_id",
+          "table": "papeis_acesso",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "caixas_sessoes",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "local_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "local_nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'ABERTO'"
+        },
+        {
+          "name": "aberto_em",
+          "type": "text",
+          "nullable": false,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')"
+        },
+        {
+          "name": "fechado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fechado_por_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fechado_por_nome",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "saldo_inicial",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_contado",
+          "type": "numeric",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor_esperado",
+          "type": "numeric",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "diferenca",
+          "type": "numeric",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "quantidade_vendas",
+          "type": "integer",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "total_vendas",
+          "type": "numeric",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "resumo_json",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao_abertura",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao_fechamento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "fechado_por_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "local_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "executores",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "codigo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ativo",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "auditoria_operacoes",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "executor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_sessao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "modulo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "acao",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "entidade",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "entidade_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_sessao_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "executor_id",
+          "table": "executores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fechamentos_diarios",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "data_referencia",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "dinheiro",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "pix",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "debito",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "credito",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "a_prazo",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "outros",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "total_informado",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "executor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "executor_id",
+          "table": "executores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "fechamentos_diarios_historico",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fechamento_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "dados_antes",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "dados_depois",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fechamento_id",
+          "table": "fechamentos_diarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "movimentacoes_estoque",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "custo_unitario",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "loja_origem_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "local_origem_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "loja_destino_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "local_destino_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "referencia",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "justificativa",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "local_destino_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_destino_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "local_origem_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_origem_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "notas_entrada",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "local_estoque_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "chave_nfe",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "numero_nota",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "serie",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "modelo",
+          "type": "text",
+          "nullable": true,
+          "default": "'55'"
+        },
+        {
+          "name": "natureza_operacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "data_emissao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "data_saida_entrada",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor_produtos",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_frete",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_seguro",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_desconto",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_outros",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_icms",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_icms_st",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_ipi",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_pis",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_cofins",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_total",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "quantidade_itens",
+          "type": "integer",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'PENDENTE'"
+        },
+        {
+          "name": "xml",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "arquivo_nome",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_importacao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_efetivacao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "importado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "efetivado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_efetivacao_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_importacao_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "local_estoque_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "notas_entrada_itens",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nota_entrada_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "numero_item",
+          "type": "integer",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "codigo_fornecedor",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ean",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ncm",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cest",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cfop",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "unidade",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "valor_unitario",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "valor_total",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "valor_desconto",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_frete",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_seguro",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_outros",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_icms",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_icms_st",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_ipi",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_pis",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "valor_cofins",
+          "type": "numeric",
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "status_vinculo",
+          "type": "text",
+          "nullable": false,
+          "default": "'PENDENTE'"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "nota_entrada_id",
+          "table": "notas_entrada",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "notas_entrada_parcelas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nota_entrada_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "numero_parcela",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "vencimento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'PENDENTE'"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "nota_entrada_id",
+          "table": "notas_entrada",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "financeiro_lancamentos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "categoria_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "numero_documento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor_original",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "data_emissao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "data_vencimento",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'PENDENTE'"
+        },
+        {
+          "name": "nota_entrada_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nota_entrada_parcela_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_criacao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_alteracao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_baixa_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "baixado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cancelado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "motivo_cancelamento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "caixa_sessao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_baixa_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_alteracao_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_criacao_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "nota_entrada_parcela_id",
+          "table": "notas_entrada_parcelas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "nota_entrada_id",
+          "table": "notas_entrada",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "categoria_id",
+          "table": "financeiro_categorias",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "caixa_sessao_id",
+          "table": "caixas_sessoes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "financeiro_baixas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "lancamento_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "data_baixa",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "lancamento_id",
+          "table": "financeiro_lancamentos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "financeiro_fechamentos_caixa",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "empresa_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "data_fechamento",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_especie",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "valor_maquininhas",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "valor_total",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "lancamento_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "lancamento_id",
+          "table": "financeiro_lancamentos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "empresa_id",
+          "table": "empresas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "financeiro_historico",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "lancamento_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "acao",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor_anterior",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "valor_novo",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "lancamento_id",
+          "table": "financeiro_lancamentos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "usuario_lojas",
+      "identityColumn": null,
+      "columns": [
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "usuario_id",
+        "loja_id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "CASCADE",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "vendas",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "local_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "executor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'CONCLUIDA'"
+        },
+        {
+          "name": "valor_total",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "cancelado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "caixa_sessao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cliente_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "executor_id",
+          "table": "executores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "local_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "cliente_id",
+          "table": "clientes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "caixa_sessao_id",
+          "table": "caixas_sessoes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "contas_receber",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "venda_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cliente_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_original",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_pago",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "saldo",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'ABERTO'"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "cliente_id",
+          "table": "clientes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "venda_id",
+          "table": "vendas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "contas_receber_recebimentos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "conta_receber_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cliente_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "venda_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "executor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "recebido_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "executor_id",
+          "table": "executores",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "venda_id",
+          "table": "vendas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "cliente_id",
+          "table": "clientes",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "conta_receber_id",
+          "table": "contas_receber",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "venda_itens",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "venda_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ean",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "preco_unitario",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "subtotal",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "venda_id",
+          "table": "vendas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "venda_pagamentos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "venda_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "forma_pagamento",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "venda_id",
+          "table": "vendas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "vendas_caixa_diario",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "data_referencia",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_caixa",
+          "type": "numeric",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "vendas_correcoes",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "venda_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "dados_antes",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "dados_depois",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "foreignKeys": [
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        },
+        {
+          "column": "venda_id",
+          "table": "vendas",
+          "referencedColumn": "id",
+          "onDelete": "NO ACTION",
+          "onUpdate": "NO ACTION",
+          "deferrable": true
+        }
+      ]
+    }
+  ]
+}

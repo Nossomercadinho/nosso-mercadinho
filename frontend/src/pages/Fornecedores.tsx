@@ -1,3 +1,5 @@
+import { apiFetch } from '../services/apiClient';
+import ResponsiveFilters from '../components/ResponsiveFilters';
 import {
   useEffect,
   useMemo,
@@ -245,7 +247,7 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
@@ -1634,7 +1636,7 @@ export default function Fornecedores() {
         </form>
       )}
 
-      <section className="fornecedores-filtros-card">
+      <ResponsiveFilters activeCount={[busca, filtroStatus !== 'TODOS' ? filtroStatus : ''].filter(Boolean).length} onClear={limparFiltros}><section className="fornecedores-filtros-card">
         <div className="fornecedores-filtros-header">
           <div>
             <h3>
@@ -1701,7 +1703,7 @@ export default function Fornecedores() {
             </select>
           </div>
         </div>
-      </section>
+      </section></ResponsiveFilters>
 
       <div className="fornecedores-lista-info">
         <span>
@@ -1715,18 +1717,18 @@ export default function Fornecedores() {
       </div>
 
       <div className="fornecedores-table">
-        <table>
+        <table className="mobile-record-table">
           <thead>
             <tr>
-              <th>Fornecedor</th>
-              <th>CPF/CNPJ</th>
-              <th>Contato</th>
-              <th>Localização</th>
-              <th>Produtos</th>
-              <th>Compras</th>
-              <th>Prazo</th>
-              <th>Status</th>
-              <th>Ações</th>
+              <th scope="col">Fornecedor</th>
+              <th scope="col">CPF/CNPJ</th>
+              <th scope="col">Contato</th>
+              <th scope="col">Localização</th>
+              <th scope="col">Produtos</th>
+              <th scope="col">Compras</th>
+              <th scope="col">Prazo</th>
+              <th scope="col">Status</th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
 
@@ -1760,7 +1762,7 @@ export default function Fornecedores() {
                       fornecedor.id
                     }
                   >
-                    <td>
+                    <td data-label="Fornecedor">
                       <div className="fornecedor-identificacao">
                         <div className="fornecedor-avatar">
                           {(
@@ -1794,7 +1796,7 @@ export default function Fornecedores() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="CPF/CNPJ">
                       <span className="fornecedor-documento">
                         {formatarDocumento(
                           fornecedor.cpf_cnpj
@@ -1802,7 +1804,7 @@ export default function Fornecedores() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Contato">
                       <div className="fornecedor-contato">
                         <strong>
                           {formatarTelefone(
@@ -1820,7 +1822,7 @@ export default function Fornecedores() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Localização">
                       <div className="fornecedor-localizacao">
                         <strong>
                           {fornecedor.cidade ||
@@ -1841,7 +1843,7 @@ export default function Fornecedores() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Produtos">
                       <span className="fornecedor-numero-badge">
                         {Number(
                           fornecedor
@@ -1851,7 +1853,7 @@ export default function Fornecedores() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Compras">
                       <span className="fornecedor-numero-badge">
                         {Number(
                           fornecedor
@@ -1861,7 +1863,7 @@ export default function Fornecedores() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Prazo">
                       <span className="fornecedor-prazo">
                         {Number(
                           fornecedor
@@ -1872,7 +1874,7 @@ export default function Fornecedores() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                       <span
                         className={`fornecedor-status ${
                           fornecedor.ativo ===
@@ -1888,7 +1890,7 @@ export default function Fornecedores() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Ações">
                       <div className="fornecedor-acoes">
                         <button
                           type="button"

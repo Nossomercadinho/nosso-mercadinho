@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { permitirPerfis } from '../middleware/auth.middleware';
+import { lojaPermitida } from '../services/acessos.service';
 import {
   buscarFechamento,
+  ErroValidacaoFechamento,
   listarExecutores,
   listarFechamentos,
   salvarFechamento,
@@ -9,8 +11,8 @@ import {
 
 const router = Router();
 
-function perfil(req: any) {
-  return String(req.usuario?.perfil || '').toUpperCase();
+function lojaDoFechamento(req: any, valor: unknown) {
+  return Number(valor || (req.usuario?.acessoTodasLojas ? 1 : req.usuario?.lojaIds?.[0]) || 0);
 }
 
 function usuarioId(req: any) {
@@ -34,7 +36,8 @@ router.get(
   permitirPerfis('ADMINISTRADOR', 'CEO', 'CAIXA'),
   async (req: any, res) => {
     try {
-      const lojaId = perfil(req) === 'CAIXA' ? 1 : Number(req.query.lojaId || 1);
+      const lojaId = lojaDoFechamento(req, req.query.lojaId);
+      if (!lojaPermitida(req.usuario, lojaId)) return res.status(403).json({ sucesso: false, erro: 'Você não tem acesso ao mercado deste fechamento.' });
       const data = String(req.query.data || '').trim();
       if (data) {
         const fechamento = await buscarFechamento(data, lojaId);
@@ -71,7 +74,8 @@ router.put(
         dados[campo] = valor;
       }
 
-      const lojaId = perfil(req) === 'CAIXA' ? 1 : Number(req.body?.lojaId || 1);
+      const lojaId = lojaDoFechamento(req, req.body?.lojaId);
+      if (!lojaPermitida(req.usuario, lojaId)) return res.status(403).json({ sucesso: false, erro: 'Você não tem acesso ao mercado deste fechamento.' });
       const fechamento = await salvarFechamento({
         ...dados,
         dataReferencia,
@@ -88,7 +92,7 @@ router.put(
         fechamento,
       });
     } catch (e: any) {
-      res.status(500).json({ sucesso: false, erro: e?.message || 'Erro ao salvar fechamento.' });
+      res.status(e instanceof ErroValidacaoFechamento ? 400 : 500).json({ sucesso: false, erro: e?.message || 'Erro ao salvar fechamento.' });
     }
   }
 );

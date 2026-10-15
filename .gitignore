@@ -4,6 +4,7 @@ backend/node_modules/
 frontend/node_modules/
 
 # Banco de dados local - NÃO enviar ao Git
+.local/
 *.db
 *.db-shm
 *.db-wal
@@ -32,6 +33,8 @@ yarn-error.log*
 # Cache
 .cache/
 .vite/
+supabase/.temp/
+supabase/.branches/
 
 # Windows
 Thumbs.db

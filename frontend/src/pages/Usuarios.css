@@ -1,0 +1,95 @@
+.access-page { min-width: 0; }
+.access-page .page-header .primary-button,.access-form-actions .primary-button { display:flex;align-items:center;justify-content:center;gap:8px; }
+.access-feedback { display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 14px;border:1px solid #cde7d6;background:#f2fbf5;color:#257146;border-radius:9px;font-size:12px;line-height:1.5; }
+.access-feedback.is-error { border-color:#f0cdd0;background:#fff5f5;color:#b53643; }
+.access-feedback>span { flex:1; }
+.access-feedback button { border:0;background:transparent;color:inherit;font-size:12px;font-weight:600;padding:4px; }
+.access-tabs { display:flex;gap:22px;border-bottom:1px solid #dfe5eb;margin-bottom:18px; }
+.access-tabs>button { display:flex;align-items:center;gap:8px;padding:0 0 13px;border:0;border-bottom:2px solid transparent;background:transparent;color:#6d7a8b;font-size:13px;font-weight:600; }
+.access-tabs>button.is-active { color:#bd5b16;border-bottom-color:#d57329; }
+.access-tabs>button>span { font-size:10px;background:#e9edf2;color:#667386;border-radius:5px;padding:2px 6px; }
+.access-filters { display:grid;grid-template-columns:minmax(180px,1fr) 210px;gap:14px;margin-bottom:16px; }
+.access-page .responsive-filter-content>.access-filters { padding:14px 84px 14px 14px;margin:0;border:1px solid #e2e7ed;border-radius:10px;background:#fff; }
+.access-filters label { display:flex;flex-direction:column;gap:6px;font-size:11px; }
+.access-filters input,.access-filters select { width:100%; }
+.access-list { border:1px solid #e2e7ed;background:#fff;border-radius:11px;overflow:hidden; }
+.access-list-heading,.access-user-row { display:grid;grid-template-columns:minmax(220px,1.4fr) minmax(130px,.75fr) minmax(150px,1fr) 70px 66px;gap:18px;align-items:center;padding:16px 18px; }
+.access-list-heading { padding-top:12px;padding-bottom:12px;background:#f8fafc;font-size:10px;font-weight:650;color:#778496; }
+.access-user-row { min-height:82px;border-top:1px solid #edf0f4;font-size:12px; }
+.access-user-row:hover { background:#fcfdfe; }
+.access-person { display:flex;gap:12px;align-items:center;min-width:0; }
+.access-avatar { width:35px;height:35px;display:grid;place-items:center;flex-shrink:0;background:#fff1e6;border-radius:10px;color:#b96324;font-size:11px;font-weight:700; }
+.access-person>div { min-width:0;display:flex;flex-direction:column;gap:4px; }
+.access-person strong { color:#2b384a;font-size:12px;font-weight:650;overflow-wrap:anywhere; }
+.access-person>div>span { font-size:11px;color:#8590a0;overflow-wrap:anywhere; }
+.access-role-name { display:flex;gap:6px;align-items:center;color:#586779;line-height:1.4; }
+.access-role-name svg { flex-shrink:0; }
+.access-market-list { display:flex;flex-wrap:wrap;gap:5px; }
+.access-market-list>span { display:inline-flex;align-items:center;gap:5px;background:#f4f6f9;border:1px solid #e9edf2;border-radius:5px;padding:4px 6px;font-size:10px;color:#677588; }
+.access-market-list>.access-muted { background:transparent;border:0;padding:0; }
+.access-status { display:inline-flex;justify-content:center;width:fit-content;font-size:10px;font-weight:600;padding:4px 8px;border-radius:5px; }
+.access-status.is-active { background:#edf8f0;color:#338254; }
+.access-status.is-inactive { background:#f0f2f5;color:#7e8998; }
+.access-edit { display:inline-flex;align-items:center;justify-content:flex-end;gap:5px;background:transparent;border:0;color:#b96425;font-size:11px;font-weight:600;padding:7px 0;white-space:nowrap; }
+.access-empty { display:flex;flex-direction:column;justify-content:center;align-items:center;gap:9px;min-height:146px;padding:26px 18px;margin:0;color:#8894a4;text-align:center;font-size:12px; }
+.access-empty strong { color:#5b697b;font-size:13px; }
+.access-empty>span { font-size:11px;line-height:1.5; }
+.access-list-note { color:#8c97a6;font-size:10px;margin:12px 0; }
+.access-role-list { display:grid;gap:13px; }
+.access-role-card { border:1px solid #e2e7ed;background:#fff;border-radius:11px;padding:18px; }
+.access-role-card-top { display:flex;align-items:center;gap:12px; }
+.access-role-symbol { display:grid;place-items:center;width:38px;height:38px;background:#fff3e9;color:#c47736;border-radius:10px;flex-shrink:0; }
+.access-role-card-top>div { flex:1; }
+.access-role-card h2 { font-size:14px;margin:0 0 4px;color:#354256; }
+.access-role-card-top>div>span { font-size:10px;color:#8894a3; }
+.access-role-card>p { display:flex;align-items:center;gap:6px;font-size:10px;color:#78869a;margin:13px 0 0; }
+.access-permission-tags { display:flex;gap:6px;flex-wrap:wrap;margin-top:15px; }
+.access-permission-tags>span { background:#f5f7fa;color:#6d7b8d;border-radius:5px;padding:4px 7px;font-size:10px;line-height:1.4; }
+.access-form { display:flex;flex-direction:column;gap:18px; }
+.access-form-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+.access-form label:not(.access-choice) { display:flex;flex-direction:column;gap:7px;font-size:12px;color:#536175; }
+.access-form input:not([type="checkbox"]),.access-form select { width:100%;min-height:41px;border:1px solid #dce2e8;border-radius:7px;padding:10px 11px;background:#fff;color:#344054;font-size:12px; }
+.access-form input:focus-visible,.access-form select:focus-visible { outline:2px solid #edac75;outline-offset:2px; }
+.access-form input:disabled { color:#8490a0;background:#f7f9fb; }
+.access-form input[type="checkbox"] { accent-color:#d57329;width:16px;height:16px;flex-shrink:0;margin:0; }
+.access-role-preview { display:flex;gap:8px;align-items:flex-start;margin:0;background:#f7f9fc;padding:10px 12px;border-radius:7px;color:#7a8797;font-size:11px;line-height:1.6; }
+.access-role-preview svg { flex-shrink:0;margin-top:1px; }
+.access-fieldset { padding:0;margin:0;border:0;min-width:0; }
+.access-fieldset legend { font-size:13px;font-weight:650;color:#3a475a; }
+.access-fieldset>p { color:#8692a3;font-size:11px;line-height:1.5;margin:6px 0 12px; }
+.access-check-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.access-choice { display:flex;gap:9px;align-items:center;padding:12px;border:1px solid #e2e7ed;border-radius:7px;color:#526174;font-size:12px;cursor:pointer; }
+.access-choice:has(input:checked) { background:#fffaf6;border-color:#edbc97; }
+.access-choice>span { display:flex;flex-direction:column;gap:4px;line-height:1.4; }
+.access-choice strong { color:#536175;font-size:12px;font-weight:600; }
+.access-choice small { color:#8692a3;font-size:10px; }
+.access-all-markets { display:flex;gap:9px;align-items:center;background:#f5f8fc;padding:14px;border-radius:7px;font-size:11px;color:#69778b;line-height:1.5; }
+.access-all-markets svg { flex-shrink:0; }
+.access-active-toggle { padding:12px; }
+.access-muted { color:#8b96a5;font-size:11px; }
+.access-form-error { padding:11px 13px;border:1px solid #f0ced1;background:#fff6f6;border-radius:7px;color:#b53b46;font-size:12px;line-height:1.5;margin:0; }
+.access-form-actions { display:flex;justify-content:flex-end;gap:9px;padding-top:16px;border-top:1px solid #edf0f4; }
+.access-form-actions button { padding:10px 16px; }
+@media(max-width:1100px) { .access-list-heading,.access-user-row { grid-template-columns:minmax(180px,1.5fr) minmax(105px,1fr) minmax(115px,1fr) 58px 53px;gap:10px;padding-left:14px;padding-right:14px; } }
+@media(max-width:900px) {
+  .access-page .page-header { align-items:flex-start; }
+  .access-page .page-header .primary-button { width:auto;align-self:flex-start; }
+  .access-filters { grid-template-columns:1fr;margin:12px 0; }
+  .access-page .responsive-filter-content>.access-filters { padding:14px;margin:12px 0 0; }
+  .access-list-heading { display:none; }
+  .access-user-row { grid-template-columns:1fr auto;gap:12px;padding:15px; }
+  .access-user-row:first-of-type { border-top:0; }
+  .access-person { grid-column:1;grid-row:1; }
+  .access-status { grid-column:2;grid-row:1;justify-self:end; }
+  .access-role-name { grid-column:1;grid-row:2;padding-left:47px;font-size:11px; }
+  .access-market-list { grid-column:1;grid-row:3;padding-left:47px; }
+  .access-user-row>.access-edit { grid-column:2;grid-row:2/4;align-self:end; }
+  .access-tabs { gap:24px; }
+  .access-role-card { padding:15px; }
+  .access-role-card-top { flex-wrap:wrap;gap:10px; }
+  .access-role-card-top>.access-edit { margin-left:48px; }
+  .access-form-grid { grid-template-columns:1fr;gap:14px; }
+  .access-check-grid { grid-template-columns:1fr; }
+  .access-form-actions>button { flex:1; }
+  .access-form input:not([type="checkbox"]),.access-form select,.access-filters input,.access-filters select { font-size:16px; }
+}

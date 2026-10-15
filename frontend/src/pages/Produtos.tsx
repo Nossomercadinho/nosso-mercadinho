@@ -1,3 +1,7 @@
+import { apiFetch } from '../services/apiClient';
+import ResponsiveFilters from '../components/ResponsiveFilters';
+import Icon from '../components/Icon';
+import { useLoja } from '../contexts/LojaContext';
 import {
   useEffect,
   useMemo,
@@ -38,17 +42,19 @@ function fetchAutenticado(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(input, {
+  return apiFetch(input, {
     ...init,
     headers,
   });
 }
 
 export default function Produtos() {
+  const { lojaAtiva } = useLoja();
+  const [catalogoGeral, setCatalogoGeral] = useState(false);
   const [produtos, setProdutos] =
     useState<ProdutoBanco[]>([]);
 
-  const [produtosMatriz, setProdutosMatriz] =
+  const [produtosLoja, setProdutosLoja] =
     useState<ProdutoBanco[]>([]);
 
   const [integrandoId, setIntegrandoId] =
@@ -107,7 +113,7 @@ export default function Produtos() {
 
   useEffect(() => {
     carregarProdutos();
-    carregarProdutosMatriz();
+    carregarProdutosLoja();
   }, []);
 
   async function carregarProdutos() {
@@ -140,10 +146,10 @@ export default function Produtos() {
     }
   }
 
-  async function carregarProdutosMatriz() {
+  async function carregarProdutosLoja() {
     try {
       const response = await fetchAutenticado(
-        `${API}/produtos/matriz/catalogo`
+        `${API}/produtos/loja/catalogo`
       );
 
       const data = await response.json();
@@ -151,27 +157,27 @@ export default function Produtos() {
       if (!response.ok || !data.sucesso) {
         setMensagem(
           data.erro ||
-            'Não foi possível carregar os produtos da Matriz.'
+            'Não foi possível carregar os produtos deste mercado.'
         );
         return;
       }
 
-      setProdutosMatriz(data.produtos || []);
+      setProdutosLoja(data.produtos || []);
     } catch (error) {
       console.error(error);
       setMensagem(
-        'Não foi possível carregar o catálogo da Matriz.'
+        'Não foi possível carregar o catálogo deste mercado.'
       );
     }
   }
 
-  async function integrarNaMatriz(produto: ProdutoBanco) {
+  async function integrarNaLoja(produto: ProdutoBanco) {
     setIntegrandoId(produto.id);
     setMensagem('');
 
     try {
       const response = await fetchAutenticado(
-        `${API}/produtos/matriz/integrar/${produto.id}`,
+        `${API}/produtos/loja/integrar/${produto.id}`,
         { method: 'POST' }
       );
 
@@ -180,19 +186,19 @@ export default function Produtos() {
       if (!response.ok || !data.sucesso) {
         setMensagem(
           data.erro ||
-            'Não foi possível adicionar o produto à Matriz.'
+            'Não foi possível adicionar o produto a este mercado.'
         );
         return;
       }
 
-      await carregarProdutosMatriz();
+      await carregarProdutosLoja();
       setMensagem(
-        `${produto.nome} adicionado à Matriz.`
+        `${produto.nome} adicionado a ${lojaAtiva?.nome || 'este mercado'}.`
       );
     } catch (error) {
       console.error(error);
       setMensagem(
-        'Erro ao adicionar produto à Matriz.'
+        'Erro ao adicionar produto a este mercado.'
       );
     } finally {
       setIntegrandoId(null);
@@ -454,12 +460,12 @@ export default function Produtos() {
     try {
       const url =
         produtoEditandoId
-          ? `${API}/produtos/${produtoEditandoId}`
+          ? `${API}/produtos/loja/${produtoEditandoId}`
           : `${API}/produtos`;
 
       const metodo =
         produtoEditandoId
-          ? 'PUT'
+          ? 'PATCH'
           : 'POST';
 
       const response = await fetchAutenticado(
@@ -488,7 +494,7 @@ export default function Produtos() {
         return;
       }
 
-      await carregarProdutos();
+      await Promise.all([carregarProdutos(), carregarProdutosLoja()]);
 
       limparFormulario();
 
@@ -580,7 +586,7 @@ export default function Produtos() {
   ) {
     const confirmar =
       window.confirm(
-        `Deseja remover o produto "${produto.nome}"?`
+        `Remover "${produto.nome}" do catálogo de ${lojaAtiva?.nome || 'este mercado'}? O histórico e o estoque serão preservados.`
       );
 
     if (!confirmar) {
@@ -589,7 +595,7 @@ export default function Produtos() {
 
     try {
       const response = await fetchAutenticado(
-        `${API}/produtos/${produto.id}`,
+        `${API}/produtos/loja/${produto.id}`,
         {
           method: 'DELETE',
         }
@@ -606,7 +612,7 @@ export default function Produtos() {
         return;
       }
 
-      await carregarProdutos();
+      await Promise.all([carregarProdutos(), carregarProdutosLoja()]);
 
       setMensagem(
         'Produto removido com sucesso.'
@@ -620,16 +626,21 @@ export default function Produtos() {
     }
   }
 
-  const idsMatriz = useMemo(
-    () => new Set(produtosMatriz.map((produto) => produto.id)),
-    [produtosMatriz]
+  const idsLoja = useMemo(
+    () => new Set(produtosLoja.map((produto) => produto.id)),
+    [produtosLoja]
   );
+  const produtosVisiveis = useMemo(() => {
+    if (!catalogoGeral) return produtosLoja;
+    const vinculados = new Map(produtosLoja.map((produto) => [produto.id, produto]));
+    return produtos.map((produto) => vinculados.get(produto.id) || produto);
+  }, [catalogoGeral, produtos, produtosLoja]);
 
   const categorias =
     useMemo(() => {
       return Array.from(
         new Set(
-          produtos
+          produtosVisiveis
             .map(
               (produto) =>
                 produto.categoria
@@ -637,7 +648,7 @@ export default function Produtos() {
             .filter(Boolean)
         )
       ).sort();
-    }, [produtos]);
+    }, [produtosVisiveis]);
 
   const produtosFiltrados =
     useMemo(() => {
@@ -646,7 +657,7 @@ export default function Produtos() {
           .toLowerCase()
           .trim();
 
-      return produtos.filter(
+      return produtosVisiveis.filter(
         (produto) => {
           const combinaBusca =
             !termo ||
@@ -673,27 +684,27 @@ export default function Produtos() {
         }
       );
     }, [
-      produtos,
+      produtosVisiveis,
       busca,
       categoriaFiltro,
     ]);
 
 
   const indicadoresProdutos = useMemo(() => {
-    const totalProdutos = produtos.length;
+    const totalProdutos = produtosLoja.length;
 
-    const estoqueBaixo = produtos.filter((produto) => {
+    const estoqueBaixo = produtosLoja.filter((produto) => {
       const estoqueAtual = Number(produto.estoque || 0);
       const minimo = Number(produto.estoque_minimo || 0);
 
       return minimo > 0 && estoqueAtual > 0 && estoqueAtual <= minimo;
     }).length;
 
-    const semEstoque = produtos.filter(
+    const semEstoque = produtosLoja.filter(
       (produto) => Number(produto.estoque || 0) <= 0
     ).length;
 
-    const valorEstoque = produtos.reduce(
+    const valorEstoque = produtosLoja.reduce(
       (total, produto) =>
         total +
         Number(produto.estoque || 0) *
@@ -706,9 +717,9 @@ export default function Produtos() {
       estoqueBaixo,
       semEstoque,
       valorEstoque,
-      totalCategorias: categorias.length,
+      totalCategorias: new Set(produtosLoja.map((produto) => produto.categoria).filter(Boolean)).size,
     };
-  }, [produtos, categorias]);
+  }, [produtosLoja]);
 
   function formatarDinheiro(valor?: number | null) {
     return Number(valor || 0).toLocaleString('pt-BR', {
@@ -761,20 +772,21 @@ export default function Produtos() {
     <div className="produtos-page">
       <div className="page-header">
         <div>
-          <h1>Produtos da Matriz</h1>
+          <h1>Produtos</h1>
 
           <p>
-            Catálogo da Matriz e cadastro rápido por código de barras.
+            Catálogo de {lojaAtiva?.nome || 'seu mercado'} e cadastro por código de barras.
           </p>
         </div>
 
-        <button
+        <div className="management-header-actions"><button type="button" className="secondary-button" onClick={() => { setCatalogoGeral((atual) => !atual); limparFiltros(); }}>{catalogoGeral ? 'Ver produtos' : 'Adicionar do catálogo'}</button><button
           type="button"
           className="primary-button"
           onClick={abrirNovoProduto}
         >
-          + Cadastrar novo produto na Matriz
+          + Novo produto
         </button>
+        </div>
       </div>
 
       {mensagem && (
@@ -793,20 +805,19 @@ export default function Produtos() {
             </h2>
 
             <p>
-              Digite ou leia o EAN
-              para buscar os dados
-              disponíveis.
+              {produtoEditandoId ? 'Identificação compartilhada por EAN. Preço e estoque mínimo pertencem a este mercado.' : 'Digite ou leia o EAN para buscar os dados disponíveis.'}
             </p>
           </div>
 
           <div className="ean-area">
-            <label>
+            <label htmlFor="produto-ean">
               Código de barras —
               EAN / GTIN
             </label>
 
             <div className="ean-search">
               <input
+                id="produto-ean"
                 type="text"
                 inputMode="numeric"
                 value={ean}
@@ -898,11 +909,12 @@ export default function Produtos() {
 
             <div className="form-grid">
               <div>
-                <label>
+                <label htmlFor="produto-nome">
                   Nome do produto
                 </label>
 
                 <input
+                  id="produto-nome"
                   value={nome}
                   onChange={(event) =>
                     setNome(
@@ -913,9 +925,10 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>Marca</label>
+                <label htmlFor="produto-marca">Marca</label>
 
                 <input
+                  id="produto-marca"
                   value={marca}
                   onChange={(event) =>
                     setMarca(
@@ -926,9 +939,10 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>Categoria</label>
+                <label htmlFor="produto-categoria">Categoria</label>
 
                 <input
+                  id="produto-categoria"
                   value={categoria}
                   onChange={(event) =>
                     setCategoria(
@@ -939,11 +953,12 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-fornecedor">
                   Fornecedor
                 </label>
 
                 <input
+                  id="produto-fornecedor"
                   value={fornecedor}
                   onChange={(event) =>
                     setFornecedor(
@@ -954,11 +969,12 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-custo">
                   Preço de custo
                 </label>
 
                 <input
+                  id="produto-custo"
                   type="number"
                   min="0"
                   step="0.01"
@@ -972,11 +988,12 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-venda">
                   Preço de venda
                 </label>
 
                 <input
+                  id="produto-venda"
                   type="number"
                   min="0"
                   step="0.01"
@@ -990,14 +1007,17 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-estoque-inicial">
                   Estoque inicial
                 </label>
 
                 <input
+                  id="produto-estoque-inicial"
                   type="number"
                   min="0"
                   value={estoqueInicial}
+                  disabled={produtoEditandoId !== null}
+                  title={produtoEditandoId ? 'Ajuste a quantidade no módulo Estoque.' : undefined}
                   onChange={(event) =>
                     setEstoqueInicial(
                       event.target.value
@@ -1007,11 +1027,12 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-estoque-minimo">
                   Estoque mínimo
                 </label>
 
                 <input
+                  id="produto-estoque-minimo"
                   type="number"
                   min="0"
                   value={estoqueMinimo}
@@ -1024,11 +1045,12 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>
+                <label htmlFor="produto-unidade">
                   Unidade de medida
                 </label>
 
                 <select
+                  id="produto-unidade"
                   value={
                     unidadeMedida
                   }
@@ -1089,9 +1111,10 @@ export default function Produtos() {
 
             <div className="form-grid">
               <div>
-                <label>NCM</label>
+                <label htmlFor="produto-ncm">NCM</label>
 
                 <input
+                  id="produto-ncm"
                   type="text"
                   inputMode="numeric"
                   maxLength={8}
@@ -1127,9 +1150,10 @@ export default function Produtos() {
               </div>
 
               <div>
-                <label>CEST</label>
+                <label htmlFor="produto-cest">CEST</label>
 
                 <input
+                  id="produto-cest"
                   value={cest}
                   onChange={(event) =>
                     setCest(
@@ -1140,12 +1164,13 @@ export default function Produtos() {
               </div>
 
               <div className="campo-largo">
-                <label>
+                <label htmlFor="produto-ncm-descricao">
                   Descrição oficial do
                   NCM
                 </label>
 
                 <input
+                  id="produto-ncm-descricao"
                   value={
                     descricaoNcm
                   }
@@ -1184,21 +1209,7 @@ export default function Produtos() {
         </div>
       )}
 
-      <section
-        className="produtos-filtros-card"
-        style={{ marginBottom: 18 }}
-      >
-        <div className="produtos-filtros-header">
-          <div>
-            <h3>Catálogo da Matriz</h3>
-            <p>
-              {produtosMatriz.length} produto(s) integrado(s) à Matriz.
-              Produtos novos devem ser cadastrados aqui e não são
-              adicionados automaticamente às demais unidades.
-            </p>
-          </div>
-        </div>
-      </section>
+<p className="catalog-note">{produtosLoja.length} produto(s) em {lojaAtiva?.nome}. Use o catálogo geral para adicionar outros itens.</p>
 
       <section className="produtos-indicadores">
         <div className="produto-indicador-card">
@@ -1254,13 +1265,13 @@ export default function Produtos() {
         </div>
       </section>
 
-      <section className="produtos-filtros-card">
+      <ResponsiveFilters activeCount={[busca, categoriaFiltro].filter(Boolean).length} onClear={limparFiltros}><section className="produtos-filtros-card">
         <div className="produtos-filtros-header">
           <div>
-            <h3>Catálogo geral — adicionar à Matriz</h3>
+            <h3>{catalogoGeral ? 'Adicionar do catálogo geral' : 'Produtos deste mercado'}</h3>
 
             <p>
-              Pesquise o catálogo já existente e integre à Matriz sem duplicar o EAN.
+              {catalogoGeral ? 'Encontre produtos existentes e adicione ao mercado selecionado.' : 'Pesquise por nome, código de barras, NCM ou marca.'}
             </p>
           </div>
 
@@ -1311,7 +1322,7 @@ export default function Produtos() {
             </select>
           </div>
         </div>
-      </section>
+      </section></ResponsiveFilters>
 
       <div className="produtos-lista-info">
         <span>
@@ -1327,19 +1338,19 @@ export default function Produtos() {
       </div>
 
       <div className="produtos-table produtos-table-moderna">
-        <table>
+        <table className="mobile-record-table">
           <thead>
             <tr>
-              <th>Produto</th>
-              <th>EAN</th>
-              <th>NCM</th>
-              <th>Categoria</th>
-              <th>Estoque</th>
-              <th>Situação</th>
-              <th>Custo</th>
-              <th>Venda</th>
-              <th>Margem</th>
-              <th>Ações</th>
+              <th scope="col">Produto</th>
+              <th scope="col">EAN</th>
+              <th scope="col">NCM</th>
+              <th scope="col">Categoria</th>
+              <th scope="col">Estoque</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Custo</th>
+              <th scope="col">Venda</th>
+              <th scope="col">Margem</th>
+              <th scope="col">Ações</th>
             </tr>
           </thead>
 
@@ -1372,7 +1383,7 @@ export default function Produtos() {
 
                 return (
                   <tr key={produto.id}>
-                    <td>
+                    <td data-label="Produto">
                       <div className="produto-tabela-info moderno">
                         <div className="produto-tabela-imagem">
                           {produto.foto ? (
@@ -1382,7 +1393,7 @@ export default function Produtos() {
                             />
                           ) : (
                             <div className="produto-tabela-sem-foto">
-                              ▦
+                              <Icon name="box" size={18} />
                             </div>
                           )}
                         </div>
@@ -1397,19 +1408,19 @@ export default function Produtos() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="EAN">
                       <span className="produto-codigo">
                         {produto.ean}
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="NCM">
                       <span className="produto-codigo">
                         {produto.ncm || '-'}
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Categoria">
                       {produto.categoria ? (
                         <span className="produto-categoria-badge">
                           {produto.categoria}
@@ -1421,7 +1432,7 @@ export default function Produtos() {
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Estoque">
                       <div className="produto-estoque-valor">
                         <strong>{produto.estoque ?? 0}</strong>
 
@@ -1431,7 +1442,7 @@ export default function Produtos() {
                       </div>
                     </td>
 
-                    <td>
+                    <td data-label="Situação">
                       <span
                         className={`produto-status-badge ${situacao.classe}`}
                       >
@@ -1439,7 +1450,7 @@ export default function Produtos() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Custo">
                       <span className="produto-preco custo">
                         {formatarDinheiro(
                           produto.preco_custo
@@ -1447,7 +1458,7 @@ export default function Produtos() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Venda">
                       <span className="produto-preco venda">
                         {formatarDinheiro(
                           produto.preco_venda
@@ -1455,7 +1466,7 @@ export default function Produtos() {
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Margem">
                       {margem === null ? (
                         <span className="produto-sem-informacao">
                           -
@@ -1473,27 +1484,27 @@ export default function Produtos() {
                       )}
                     </td>
 
-                    <td>
+                    <td data-label="Ações">
                       <div className="acoes-produto moderno">
-                        <button
+                        {catalogoGeral && <button
                           type="button"
                           className="primary-button"
                           disabled={
-                            idsMatriz.has(produto.id) ||
+                            idsLoja.has(produto.id) ||
                             integrandoId === produto.id
                           }
                           onClick={() =>
-                            integrarNaMatriz(produto)
+                            integrarNaLoja(produto)
                           }
                         >
-                          {idsMatriz.has(produto.id)
-                            ? 'Na Matriz'
+                          {idsLoja.has(produto.id)
+                            ? 'Neste mercado'
                             : integrandoId === produto.id
                             ? 'Adicionando...'
-                            : 'Adicionar à Matriz'}
-                        </button>
+                            : 'Adicionar ao mercado'}
+                        </button>}
 
-                        <button
+                        {(!catalogoGeral || idsLoja.has(produto.id)) && <><button
                           type="button"
                           className="editar-button"
                           onClick={() =>
@@ -1510,8 +1521,8 @@ export default function Produtos() {
                             excluirProduto(produto)
                           }
                         >
-                          Excluir
-                        </button>
+                          Remover
+                        </button></>}
                       </div>
                     </td>
                   </tr>
