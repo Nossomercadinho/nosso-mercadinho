@@ -20,6 +20,9 @@ type Contract = {
         }[];
     }[];
 };
+// Stable app-specific int32 keys shared by every serverless instance. Transaction
+// writes use one database lock to preserve the SQLite BEGIN IMMEDIATE ordering.
+const TRANSACTION_LOCK_KEYS = [0x4e4f5353, 0x4f4d4552];
 types.setTypeParser(20, value => { const n = Number(value); if (!Number.isSafeInteger(n))
     throw new Error('Identificador PostgreSQL fora do intervalo seguro do JavaScript.'); return n; });
 types.setTypeParser(1700, value => { const n = Number(value); if (!Number.isFinite(n))
@@ -45,7 +48,10 @@ export function postgresConfig() {
     // pg-connection-string also accepts ssl=0, options and host overrides. Keep
     // security/session settings exclusively in the explicit application config.
     url.search = '';
-    const ca = process.env.PG_SSL_CA_FILE ? fs.readFileSync(path.resolve(process.env.PG_SSL_CA_FILE), 'utf8') : undefined;
+    // Hosted environments can supply the PEM directly, without a machine-local file.
+    const ca = process.env.PG_SSL_CA
+        ? process.env.PG_SSL_CA.replace(/\\n/g, '\n')
+        : process.env.PG_SSL_CA_FILE ? fs.readFileSync(path.resolve(process.env.PG_SSL_CA_FILE), 'utf8') : undefined;
     return { connectionString: url.toString(), ssl: mode === 'disable' ? false : { rejectUnauthorized: true, ...(ca ? { ca } : {}) }, application_name: 'nosso-mercadinho-api', connectionTimeoutMillis: 15000,
         options: '-c timezone=UTC -c search_path=public,pg_catalog', max: 1, idleTimeoutMillis: 10000, allowExitOnIdle: true };
 }
@@ -84,8 +90,13 @@ export class PostgresDatabase implements ApplicationDatabase {
             if (row.is_identity === 'YES')
                 this.identities.set(row.table_name, row.column_name);
         }
-        const bundled = path.resolve(__dirname, '../schema-contract.json');
-        const contractPath = fs.existsSync(bundled) ? bundled : path.resolve(__dirname, '../../../supabase/schema-contract.json');
+        // ts-node reads the source contract; deployed JavaScript must contain its
+        // build asset instead of relying on the repository or working directory.
+        const contractPath = __filename.endsWith('.ts')
+            ? path.resolve(__dirname, '../../../supabase/schema-contract.json')
+            : path.resolve(__dirname, '../schema-contract.json');
+        if (!fs.existsSync(contractPath))
+            throw new Error('schema-contract.json ausente no pacote da API. Execute o build completo do backend.');
         const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8')) as Contract;
         const missing: string[] = [];
         for (const table of contract.tables)
@@ -140,9 +151,12 @@ export class PostgresDatabase implements ApplicationDatabase {
             this.transactionError = undefined;
             client.on('error', this.onTransactionError);
             try {
-                return await client.query(sql, params);
+                const result = await client.query(sql, params);
+                await client.query('SELECT pg_advisory_xact_lock($1, $2)', TRANSACTION_LOCK_KEYS);
+                return result;
             }
             catch (error) {
+                await client.query('ROLLBACK').catch(() => undefined);
                 this.releaseTransaction(true);
                 throw error;
             }

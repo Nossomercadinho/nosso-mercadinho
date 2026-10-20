@@ -72,12 +72,11 @@ function carregarTabelaLocal(): ItemNcm[] {
     return tabelaNcm;
   }
 
+  // The build keeps this asset beside the compiled database modules. Resolve it
+  // from the service so local development and serverless functions use one path.
   const caminhoArquivo = path.resolve(
-    process.cwd(),
-    'src',
-    'database',
-    'ncm',
-    'ncm.json'
+    __dirname,
+    '../database/ncm/ncm.json'
   );
 
   console.log('Carregando NCM local...');
@@ -85,7 +84,7 @@ function carregarTabelaLocal(): ItemNcm[] {
 
   if (!fs.existsSync(caminhoArquivo)) {
     throw new Error(
-      'Arquivo local ncm.json não encontrado.'
+      'Arquivo ncm.json ausente no pacote da API. Execute o build completo do backend.'
     );
   }
 

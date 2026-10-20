@@ -26,11 +26,24 @@ test('mercado ativo isola clientes, fornecedores, financeiro e NF-e mesmo para a
   child.stdout.on('data',d=>{logs+=d;});child.stderr.on('data',d=>{logs+=d;});
   t.after(async()=>{if(db)await new Promise(r=>db.close(r));if(child.exitCode===null){const end=once(child,'exit');child.kill();await end;}assert.equal(path.dirname(path.resolve(temp)),path.resolve(os.tmpdir()));assert.ok(path.basename(temp).startsWith('mercado-ativo-test-'));fs.rmSync(temp,{recursive:true,force:true});});
   const base=`http://127.0.0.1:${port}/api`;
-  for(let i=0;i<100;i++){try{if((await fetch(base)).ok)break;}catch{}assert.equal(child.exitCode,null,logs);await new Promise(r=>setTimeout(r,60));}
+  // Concurrent test processes can delay ts-node startup beyond the former 6s
+  // polling window. Require successful initialization before reading its DB.
+  const startupDeadline=Date.now()+30000;
+  let ready=false;
+  while(Date.now()<startupDeadline){
+    assert.equal(child.exitCode,null,logs);
+    try{
+      const response=await fetch(base,{signal:AbortSignal.timeout(1000)});
+      await response.text();
+      if(response.ok){ready=true;break;}
+    }catch{}
+    await new Promise(r=>setTimeout(r,60));
+  }
+  assert.equal(ready,true,`A API não concluiu a inicialização em 30s.\n${logs}`);
   db=new sqlite3.Database(path.join(temp,'src/database/nosso-mercadinho.db'));
   const run=(sql,args=[])=>new Promise((resolve,reject)=>db.run(sql,args,function(e){e?reject(e):resolve(this.lastID);}));
   const get=(sql,args=[])=>new Promise((resolve,reject)=>db.get(sql,args,(e,row)=>e?reject(e):resolve(row)));
-  for(let i=0;i<50;i++){if(await get('SELECT id FROM locais_estoque WHERE id=1'))break;await new Promise(r=>setTimeout(r,30));}
+  assert.ok(await get('SELECT id FROM locais_estoque WHERE id=1'),'A inicialização deve preparar o local de estoque da Matriz.');
   const password=randomBytes(16).toString('hex');
   await run('INSERT INTO usuarios(nome,email,senha,perfil) VALUES(?,?,?,?)',['Admin','admin@ativa.test',await bcrypt.hash(password,4),'ADMINISTRADOR']);
   const request=async(route,loja,method='GET',body,expected=200)=>{const r=await fetch(base+route,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`} : {}),...(loja?{'X-Loja-Id':String(loja)}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});const data=await r.json();assert.ok((Array.isArray(expected)?expected:[expected]).includes(r.status),`${method} ${route} loja=${loja}: ${r.status} ${JSON.stringify(data)}\n${logs}`);return data;};

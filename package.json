@@ -1,0 +1,13 @@
+{
+  "name": "nosso-mercadinho",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm test --prefix backend && node --test tests/*.test.cjs",
+    "check:deployment": "node scripts/check-deployment.cjs"
+  }
+}

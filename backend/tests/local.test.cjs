@@ -43,18 +43,24 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
   });
 
   const base = `http://127.0.0.1:${port}`;
-  for (let attempt = 0; attempt < 100; attempt++) {
-    try { if ((await fetch(base + '/api')).ok) break; } catch {}
+  // A loaded schema alone is insufficient: all startup services must finish
+  // before the API can listen, especially with concurrent ts-node test workers.
+  const startupDeadline = Date.now() + 30000;
+  let ready = false;
+  while (Date.now() < startupDeadline) {
     assert.equal(child.exitCode, null, logs);
+    try {
+      const response = await fetch(base + '/api', { signal: AbortSignal.timeout(1000) });
+      await response.text();
+      if (response.ok) { ready = true; break; }
+    } catch {}
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+  assert.equal(ready, true, `A API não concluiu a inicialização em 30s.\n${logs}`);
   db = new sqlite3.Database(path.join(temp, 'src/database/nosso-mercadinho.db'));
   const get = (sql, args = []) => new Promise((resolve, reject) => db.get(sql, args, (error, row) => error ? reject(error) : resolve(row)));
   const run = (sql, args = []) => new Promise((resolve, reject) => db.run(sql, args, function (error) { error ? reject(error) : resolve(this.lastID); }));
-  for (let attempt = 0; attempt < 50; attempt++) {
-    try { if ((await get('SELECT COUNT(*) AS total FROM locais_estoque')).total) break; } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
+  assert.ok((await get('SELECT COUNT(*) AS total FROM locais_estoque')).total, 'A inicialização deve preparar os locais de estoque.');
   const password = randomBytes(16).toString('hex');
   const hash = await bcrypt.hash(password, 4);
   for (const role of ['ADMINISTRADOR', 'CAIXA', 'OPERADOR']) {

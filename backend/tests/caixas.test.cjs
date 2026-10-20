@@ -34,18 +34,24 @@ test('caixas, operadores e isolamento entre mercados', { timeout: 60000 }, async
     fs.rmSync(temp, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(base + '/api')).ok) break; } catch {}
+  // Wait for completed startup rather than continuing after a short polling
+  // window while concurrent ts-node workers are still preparing their APIs.
+  const startupDeadline = Date.now() + 30000;
+  let ready = false;
+  while (Date.now() < startupDeadline) {
     assert.equal(child.exitCode, null, logs);
+    try {
+      const response = await fetch(base + '/api', { signal: AbortSignal.timeout(1000) });
+      await response.text();
+      if (response.ok) { ready = true; break; }
+    } catch {}
     await new Promise(r => setTimeout(r, 100));
   }
+  assert.equal(ready, true, `A API não concluiu a inicialização em 30s.\n${logs}`);
   db = new sqlite3.Database(path.join(temp, 'src/database/nosso-mercadinho.db'));
   const run = (sql, args = []) => new Promise((resolve, reject) => db.run(sql, args, function (e) { e ? reject(e) : resolve(this.lastID); }));
   const get = (sql, args = []) => new Promise((resolve, reject) => db.get(sql, args, (e, row) => e ? reject(e) : resolve(row)));
-  for (let i = 0; i < 50; i++) {
-    try { if (await get('SELECT id FROM locais_estoque WHERE id = 1')) break; } catch {}
-    await new Promise(r => setTimeout(r, 100));
-  }
+  assert.ok(await get('SELECT id FROM locais_estoque WHERE id = 1'), 'A inicialização deve preparar o local de estoque da Matriz.');
   const request = async (route, token, method = 'GET', body, expected = 200) => {
     const response = await fetch(base + route, { method,
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },

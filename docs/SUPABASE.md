@@ -1,6 +1,26 @@
 # PostgreSQL / Supabase: instalação e migração
 
-O adaptador PostgreSQL e as migrations foram validados em PostgreSQL local. A instalação atual continua usando SQLite; nenhum banco Supabase remoto foi configurado nem recebeu dados durante a preparação. As instruções abaixo são para executar a instalação ou o corte no ambiente de destino, com a conexão privada correspondente.
+O ambiente local foi conectado ao Supabase em 19/10/2026, com migrations e dados conferidos no projeto remoto. A configuração real está em `backend/.env`, ignorado pelo Git. As instruções de instalação e migração abaixo continuam servindo para novos ambientes; não repita o seed ou a importação no banco já instalado.
+
+## Estado instalado em 19/10/2026
+
+- Projeto: `MainDatabase`, referência `mnepfveqnyuweoqkecnn`, região `us-west-2`.
+- Banco atual da API: PostgreSQL remoto, por Session pooler na porta 5432, com TLS e verificação do certificado e do hostname. A CA está no arquivo privado `.local/supabase-ca.crt`.
+- Estrutura ativa em `public`: 38 tabelas, 431 colunas, 90 chaves estrangeiras, RLS habilitado e nenhuma policy para a Data API. As migrations `20261015000100` e `20261015000200` estão registradas no histórico remoto.
+- Estrutura anterior: 27 tabelas, todas conferidas vazias sob `postgres`/BYPASSRLS e bloqueio transacional, preservadas em `legacy_20261019`, com suas funções, tipos, índices, triggers e policies. O schema arquivado não recebe acesso dos papéis de navegador. Os caminhos de busca das funções antigas de negócio apontam para esse arquivo; o event trigger global que habilita RLS foi preservado.
+- Dados transferidos: 31 registros, incluindo empresa, Matriz, Área de Venda, 3 papéis, 22 categorias financeiras, marcador de migração, 1 usuário e 1 sessão de caixa. O hash de senha existente foi comparado e preservado. Não foram criados produtos, vendas ou movimentos fictícios.
+- O caixa que já estava aberto permanece aberto, com seus dados originais. Nenhum fechamento foi inventado. O seed técnico já estava presente na origem e foi transferido junto com os dados; não foi reaplicado nem criado outro administrador.
+- Complemento técnico: criada 1 identificação operacional para o usuário existente, com código `01`, necessário nos fluxos de estoque. Sua validação pela API retornou 200. Esse código não substitui a senha de login.
+- A conexão usa o papel dedicado `nosso_mercadinho_api`, proprietário somente das tabelas da aplicação, sem SUPERUSER, CREATEDB, CREATEROLE, BYPASSRLS ou permissão CREATE no schema. PAT e chaves da Data API não são necessários no runtime.
+- Backup SQLite consistente e exportação privada: `.local/backups/pre-supabase-20261020T004923Z.db` e `.local/exports/dados-supabase.sql`. O sufixo do backup está em UTC. O arquivo SQLite original foi mantido. A configuração anterior da API está em `.local/backups/backend-pre-supabase.env`.
+
+O backend e a interface executam neste computador; o banco é hospedado no Supabase. A interface local usa `http://127.0.0.1:5173`, com `/api` encaminhado à API em `http://127.0.0.1:3000`. Para reiniciar após encerrar os processos, execute `npm start` em `backend` (após `npm run build`, se alterar o código) e `npm run dev` em `frontend`. Não inicie processos adicionais se essas portas já estiverem ocupadas.
+
+O teste SQL `supabase/tests/backend_only.sql` passou no projeto real. Consultas diretas à tabela `usuarios` pela Data API foram negadas tanto com a chave publicável (401) quanto com a secreta (403). Os builds de backend e frontend passaram; os testes locais do backend tiveram 40 aprovações, nenhuma falha e 3 integrações opcionais puladas por exigirem PostgreSQL local de teste.
+
+As 22 verificações da API real passaram, cobrindo autenticação por JWT, permissões, loja ativa, consultas dos módulos, contexto do caixa e rejeição de acesso sem token e login incorreto. O JWT de teste foi gerado somente em memória com o segredo existente; a senha real do usuário não foi solicitada nem redefinida. A interface e seu proxy `/api` também retornaram 200. Os relatórios privados estão em `.local/supabase-smoke-result.json` e `.local/supabase-runtime-verification.json`.
+
+O backup serve para preservação e conferência. Depois que a aplicação gravar novos dados no Supabase, retornar ao SQLite antigo exige reconciliar essas alterações.
 
 A API Express continua responsável pelo login com JWT, pelos papéis, pelas lojas autorizadas e pela loja ativa. As contas existentes permanecem em `public.usuarios`, com seus hashes de senha. Não há migração para `auth.users`, nem acesso direto do frontend às tabelas pela Data API do Supabase. As migrations bloqueiam os papéis de navegador nas tabelas da aplicação; use a conexão PostgreSQL somente no servidor.
 
@@ -147,7 +167,7 @@ Para automação, `npm run admin:criar -- --nome "Nome do responsável" --email 
 
 O banco padrão continua sendo SQLite. Para ativar PostgreSQL, configure **`DB_CLIENT=postgres` explicitamente**; definir somente `DATABASE_URL` não troca o banco. Configure a URI somente no ambiente da API, com a conexão Direct ou Session, e mantenha `JWT_SECRET` definido. A conexão da API deve usar o proprietário das tabelas ou um papel de servidor revisado com `BYPASSRLS`: os papéis de navegador e a chave `service_role` não têm acesso às tabelas protegidas. Uma chave da Data API não substitui uma conexão PostgreSQL.
 
-No backend, use `PG_SSL=require`, que valida o certificado com `rejectUnauthorized: true`, e `PG_SSL_CA_FILE` com o caminho do certificado CA quando necessário. Esse nome de opção pertence ao adaptador da aplicação; no cliente `psql`, as opções correspondentes continuam sendo `PGSSLMODE=verify-full` e `PGSSLROOTCERT`. O adaptador ignora parâmetros de consulta da URI; configure TLS pelas variáveis próprias, sem depender de `?sslmode=`. `PG_SSL=disable` é reservado a testes locais explícitos e é recusado em produção ou para hosts remotos. Não coloque a API em produção apontando para o novo banco antes de preparar e conferir os dados.
+No backend, use `PG_SSL=require`, que valida o certificado com `rejectUnauthorized: true`. Quando necessário, informe a CA como PEM completo em `PG_SSL_CA` (multilinha ou com `\n` literais), adequado para hospedagem, ou use `PG_SSL_CA_FILE` com o caminho de um arquivo existente no servidor. `PG_SSL_CA` tem precedência sobre o arquivo; caminhos Windows locais não servem na Vercel. Essas opções pertencem ao adaptador da aplicação; no cliente `psql`, as opções correspondentes continuam sendo `PGSSLMODE=verify-full` e `PGSSLROOTCERT`. O adaptador ignora parâmetros de consulta da URI; configure TLS pelas variáveis próprias, sem depender de `?sslmode=`. `PG_SSL=disable` é reservado a testes locais explícitos e é recusado em produção ou para hosts remotos. Não coloque a API em produção apontando para o novo banco antes de preparar e conferir os dados.
 
 ```powershell
 Set-Location backend

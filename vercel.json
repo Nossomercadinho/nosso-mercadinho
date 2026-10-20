@@ -1,0 +1,52 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["pdx1"],
+  "fluid": false,
+  "services": {
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "vercel.js",
+      "installCommand": "npm ci --include=dev",
+      "buildCommand": "npm run build",
+      "outputDirectory": ".",
+      "functions": {
+        "vercel.js": {
+          "maxDuration": 60,
+          "includeFiles": "backend/dist/{schema-contract.json,database/ncm/ncm.json}",
+          "excludeFiles": "{**/.env,**/.env.*,**/*.db,**/*.db-wal,**/*.db-shm,**/*.sqlite,**/*.sqlite3,**/database/sqlite.*,**/node_modules/sqlite3/**}"
+        }
+      }
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite",
+      "installCommand": "npm ci --include=dev",
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist",
+      "rewrites": [
+        { "source": "/((?!assets(?:/|$)|src(?:/|$)|node_modules(?:/|$)|@|.*\\.[^/]+$).*)", "destination": "/index.html" }
+      ]
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/api", "destination": { "service": "backend" } },
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}

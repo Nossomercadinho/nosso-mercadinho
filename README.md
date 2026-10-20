@@ -52,9 +52,13 @@ O seletor **Loja ativa**, no cabeçalho, define o mercado das consultas e dos no
 
 As migrações são aditivas, preservam os preços existentes e associam os cadastros legados às lojas identificadas no histórico, usando a Matriz quando não houver histórico.
 
+## Publicação na Vercel
+
+O [guia da Vercel](docs/VERCEL.md) descreve a publicação completa em um projeto na raiz do repositório, com dois serviços independentes: `frontend` (Vite) e `backend` (Express). `vercel.json` encaminha `/api` à API e os demais caminhos à interface, no mesmo domínio. Não há bindings internos, pois as chamadas partem do navegador por `/api`. As seis variáveis privadas pertencem ao servidor; a interface não precisa de variáveis Supabase. A configuração local e os backups permanecem fora do pacote.
+
 ## PostgreSQL / Supabase
 
-O adaptador PostgreSQL, as migrations e o exportador SQLite estão implementados e validados em PostgreSQL local. A instalação SQLite atual continua como padrão; nenhum projeto Supabase remoto está configurado neste repositório.
+O ambiente local foi conectado ao Supabase em 19/10/2026. As migrations e os dados do SQLite foram aplicados e conferidos no banco remoto; a configuração privada fica em `backend/.env`, fora do Git. O SQLite original e seu backup foram preservados. Sem `DB_CLIENT=postgres` explícito, o código continua usando SQLite por padrão. Consulte o [estado instalado](docs/SUPABASE.md#estado-instalado-em-19102026).
 
 O [guia de operação e migração](docs/SUPABASE.md) cobre dois caminhos:
 
