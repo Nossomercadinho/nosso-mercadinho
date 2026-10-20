@@ -2,6 +2,8 @@
 
 Sistema de gestão de mercados com frontend React/Vite e API Express: catálogo por loja, estoque, compras, financeiro, clientes, vendas e frente de caixa com abertura e fechamento por operador.
 
+Para continuar o projeto com outro agente, comece pelo [guia na raiz](AGENTS.md): arquitetura, Vercel, variáveis privadas, Supabase, acessos e fluxo de alteração/publicação.
+
 O banco padrão é SQLite em `backend/src/database/nosso-mercadinho.db`. PostgreSQL/Supabase é uma opção explícita do backend. Bancos, credenciais e arquivos privados de migração ficam fora do Git; uma instalação existente deve transferir seus dados separadamente, com backup consistente.
 
 ## Desenvolvimento local

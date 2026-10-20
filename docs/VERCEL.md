@@ -107,7 +107,7 @@ O estado de produção só fica confirmado após o deploy. No domínio final, co
 | API inexistente | 404 em JSON |
 | Asset inexistente em `/assets/` | 404 |
 
-O domínio informado para o projeto é `https://nosso-mercadinho-api.vercel.app`. A configuração local não altera esse domínio nem comprova que a nova versão já esteja publicada.
+O domínio atual informado e validado em 20/10/2026 é `https://nosso-mercadinho-33tb.vercel.app/`, com a API no mesmo domínio em `/api`. A configuração local e o commit/push não comprovam que uma nova versão já esteja publicada; confira o deployment correspondente na Vercel. O [guia para agentes na raiz](../AGENTS.md) reúne o estado de referência e o padrão para continuar o projeto.
 
 ## Limites de operação
 
