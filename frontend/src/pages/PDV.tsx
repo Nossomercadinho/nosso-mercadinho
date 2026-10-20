@@ -98,7 +98,12 @@ function fetchAutenticado(input: RequestInfo | URL, init: RequestInit = {}) {
   });
 }
 
-export default function PDV() {
+type PDVProps = {
+  podeConsultarHistorico: boolean;
+  onLogout?: () => void;
+};
+
+export default function PDV({ podeConsultarHistorico, onLogout }: PDVProps) {
   const {lojaAtiva, selecionarLoja} = useLoja();
   const [locais, setLocais] = useState<LocalPdv[]>([]);
   const [mercados, setMercados] = useState<MercadoCaixa[]>([]);
@@ -573,6 +578,10 @@ export default function PDV() {
       )
     )
       return;
+    if (onLogout) {
+      onLogout();
+      return;
+    }
     if (window.location.pathname.toLowerCase().startsWith("/pdv"))
       window.location.assign("/");
     else window.location.hash = encodeURIComponent("Visão Geral");
@@ -725,15 +734,16 @@ export default function PDV() {
           <button
             type="button"
             className="pos-management"
-            aria-label="Voltar à gestão"
+            aria-label={onLogout ? 'Sair do sistema' : 'Voltar à gestão'}
+            disabled={finalizando}
             onClick={sairDoPdv}
           >
             <Icon name="collapse" size={17} />
-            <span>Voltar à gestão</span>
+            <span>{onLogout ? 'Sair do sistema' : 'Voltar à gestão'}</span>
           </button>
         </div>
       </header>
-      {!contextoCarregado ? <div className="pos-session-loading">Carregando seus mercados e seu expediente...</div> : !sessao ? <><AberturaCaixa lojaInicialId={lojaAtiva?.id} lojas={mercados} onOpened={session => { selecionarLoja(session.lojaId); aplicarSessao(session); setUltimoFechamento(null); }} onHistory={verHistorico} ultimoFechamento={ultimoFechamento} />{erro && <div className="pos-alert" role="alert">{erro}<button type="button" onClick={() => void carregarLocais()}>Tentar novamente</button></div>}</> : <>
+      {!contextoCarregado ? <div className="pos-session-loading">Carregando seus mercados e seu expediente...</div> : !sessao ? <><AberturaCaixa lojaInicialId={lojaAtiva?.id} lojas={mercados} onOpened={session => { selecionarLoja(session.lojaId); aplicarSessao(session); setUltimoFechamento(null); }} onHistory={podeConsultarHistorico ? verHistorico : undefined} ultimoFechamento={ultimoFechamento} />{erro && <div className="pos-alert" role="alert">{erro}<button type="button" onClick={() => void carregarLocais()}>Tentar novamente</button></div>}</> : <>
       <div className="pos-body">
         <section className="pos-operation" aria-label="Venda em andamento">
           <div className="pos-operation-heading">

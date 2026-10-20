@@ -138,6 +138,8 @@ export default function Dashboard({
   const perfil = String(usuario?.perfil || '').toUpperCase();
   const permissoes = usuario?.permissoes || [];
   const podeFinanceiro = permissoes.includes('financeiro');
+  const somentePdv = permissoes.length === 1 && permissoes.includes('pdv');
+  const podeConsultarHistorico = permissoes.includes('caixas');
   const resumoVersion = useRef(0);
 
   useEffect(() => {
@@ -160,8 +162,8 @@ export default function Dashboard({
   const [
     paginaAtiva,
     setPaginaAtiva,
-  ] = useState(
-    modoPdvDireto ? 'PDV' : decodePageHash()
+  ] = useState(() =>
+    modoPdvDireto || somentePdv ? 'PDV' : decodePageHash()
   );
 
   const [
@@ -188,7 +190,7 @@ export default function Dashboard({
       ['Compras', ['compras']], ['Financeiro', ['financeiro']], ['Contas / Boletos', ['contas']],
       ['Clientes / A Prazo', ['clientes']], ['Vendas', ['vendas']], ['Fiscal', ['fiscal']],
       ['Fornecedores', ['fornecedores']], ['Unidades', ['unidades']], ['Fechamento Diário', ['fechamento']],
-      ['Histórico do caixa', ['caixas','pdv']], ['Usuários e papéis', ['usuarios']], ['PDV', ['pdv']],
+      ['Histórico do caixa', ['caixas']], ['Usuários e papéis', ['usuarios']], ['PDV', ['pdv']],
     ];
     return modules.filter(([, codes]) => codes.some(code => usuario?.permissoes?.includes(code))).map(([label]) => label);
   }, [usuario]);
@@ -196,9 +198,12 @@ export default function Dashboard({
   useEffect(() => { if (podeFinanceiro && lojaAtiva) void carregarResumoFinanceiro(); else setResumoFinanceiro(resumoVazio); }, [podeFinanceiro, lojaAtiva?.id]);
 
   useEffect(() => {
-    if (modoPdvDireto) {
+    if (modoPdvDireto || somentePdv) {
       if (paginaAtiva !== 'PDV') {
         setPaginaAtiva('PDV');
+      }
+      if (somentePdv && window.location.hash !== '#PDV') {
+        window.history.replaceState(null, '', '#PDV');
       }
       return;
     }
@@ -214,6 +219,7 @@ export default function Dashboard({
     menuItems,
     paginaAtiva,
     modoPdvDireto,
+    somentePdv,
   ]);
 
   function navegar(page: string) {
@@ -273,6 +279,9 @@ export default function Dashboard({
   }
 
   function fazerLogout() {
+    if (somentePdv) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     localStorage.removeItem(
       'usuarioLogado'
     );
@@ -610,7 +619,7 @@ export default function Dashboard({
       paginaAtiva ===
         'PDV'
     ) {
-      return <PDV />;
+      return <PDV podeConsultarHistorico={podeConsultarHistorico} onLogout={somentePdv ? fazerLogout : undefined} />;
     }
 
     if (
@@ -659,7 +668,7 @@ export default function Dashboard({
   if (carregandoLoja) return <div className="store-context-loading">Carregando seus mercados...</div>;
   if (erroLoja) return <div className="store-context-loading" role="alert"><p>{erroLoja}</p><button type="button" className="secondary-button" onClick={() => void atualizarLojas()}>Tentar novamente</button></div>;
 
-  if (modoPdvDireto && menuItems.includes('PDV')) {
+  if ((modoPdvDireto || somentePdv) && menuItems.includes('PDV')) {
     return (
       <div
         style={{
@@ -674,7 +683,7 @@ export default function Dashboard({
             width: '100%',
           }}
         >
-          <PDV />
+          <PDV podeConsultarHistorico={podeConsultarHistorico} onLogout={somentePdv ? fazerLogout : undefined} />
         </main>
       </div>
     );

@@ -24,7 +24,7 @@ export async function caixaRequest(path: string, options: RequestInit = {}) {
 }
 
 export function AberturaCaixa({ lojas, onOpened, onHistory, ultimoFechamento, lojaInicialId }: {
-  lojas: MercadoCaixa[]; onOpened: (session: SessaoCaixa) => void; onHistory: () => void; ultimoFechamento?: SessaoCaixa | null; lojaInicialId?: number;
+  lojas: MercadoCaixa[]; onOpened: (session: SessaoCaixa) => void; onHistory?: () => void; ultimoFechamento?: SessaoCaixa | null; lojaInicialId?: number;
 }) {
   const [lojaId, setLojaId] = useState(lojas.some(item => item.id === lojaInicialId) ? String(lojaInicialId) : lojas.length === 1 ? String(lojas[0].id) : '');
   const loja = lojas.find(item => String(item.id) === lojaId);
@@ -47,7 +47,7 @@ export function AberturaCaixa({ lojas, onOpened, onHistory, ultimoFechamento, lo
   }
 
   return <div className="cash-opening-layout">
-    <div className="cash-opening-intro"><span className="page-kicker">INÍCIO DO EXPEDIENTE</span><h1>Vamos abrir o caixa?</h1><p>Escolha onde vai trabalhar e informe o fundo de troco. As vendas ficam vinculadas ao seu acesso e a este expediente.</p><div className="cash-operator"><span><Icon name="users" size={23} /></span><div><small>Responsável pela abertura</small><strong>{usuario.nome || 'Usuário conectado'}</strong><small>{usuario.papelNome || usuario.perfil}</small></div></div><button type="button" className="cash-history-link" onClick={onHistory}><Icon name="clock" size={17} />Consultar histórico dos caixas<Icon name="arrow" size={16} /></button></div>
+    <div className="cash-opening-intro"><span className="page-kicker">INÍCIO DO EXPEDIENTE</span><h1>Vamos abrir o caixa?</h1><p>Escolha onde vai trabalhar e informe o fundo de troco. As vendas ficam vinculadas ao seu acesso e a este expediente.</p><div className="cash-operator"><span><Icon name="users" size={23} /></span><div><small>Responsável pela abertura</small><strong>{usuario.nome || 'Usuário conectado'}</strong><small>{usuario.papelNome || usuario.perfil}</small></div></div>{onHistory && <button type="button" className="cash-history-link" onClick={onHistory}><Icon name="clock" size={17} />Consultar histórico dos caixas<Icon name="arrow" size={16} /></button>}</div>
     <form className="cash-opening-form" onSubmit={abrir}>
       {ultimoFechamento && <div className="cash-closed-notice" role="status"><Icon name="check" size={18} /><div><strong>Caixa #{ultimoFechamento.id} encerrado</strong><small>Diferença da conferência: {moeda(ultimoFechamento.diferenca)}</small></div></div>}
       <div className="cash-form-heading"><Icon name="store" size={21} /><div><h2>Abertura de caixa</h2><p>{lojas.length} mercado(s) disponível(is) para você</p></div></div>
