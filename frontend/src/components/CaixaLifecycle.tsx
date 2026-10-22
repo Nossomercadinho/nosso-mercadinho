@@ -29,7 +29,8 @@ export function AberturaCaixa({ lojas, onOpened, onHistory, ultimoFechamento, lo
   const [lojaId, setLojaId] = useState(lojas.some(item => item.id === lojaInicialId) ? String(lojaInicialId) : lojas.length === 1 ? String(lojas[0].id) : '');
   const loja = lojas.find(item => String(item.id) === lojaId);
   const [localId, setLocalId] = useState(loja?.locais.length === 1 ? String(loja.locais[0].id) : '');
-  const [saldo, setSaldo] = useState('0');
+  const [saldo, setSaldo] = useState('');
+  const saldoValido = saldo.trim() !== '' && Number.isFinite(Number(saldo)) && Number(saldo) >= 0 && Number(saldo) <= 999999999.99;
   const [observacao, setObservacao] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +39,7 @@ export function AberturaCaixa({ lojas, onOpened, onHistory, ultimoFechamento, lo
   async function abrir(event: React.FormEvent) {
     event.preventDefault(); setError('');
     if (!lojaId || !localId) { setError('Escolha o mercado e o local de venda.'); return; }
+    if (!saldoValido) { setError('Informe o valor inicial em caixa antes de abrir.'); return; }
     setSaving(true);
     try {
       const data = await caixaRequest('/abrir', { method: 'POST', body: JSON.stringify({ lojaId: Number(lojaId), localId: Number(localId), saldoInicial: Number(saldo), observacao }) });
@@ -52,12 +54,12 @@ export function AberturaCaixa({ lojas, onOpened, onHistory, ultimoFechamento, lo
       {ultimoFechamento && <div className="cash-closed-notice" role="status"><Icon name="check" size={18} /><div><strong>Caixa #{ultimoFechamento.id} encerrado</strong><small>Diferença da conferência: {moeda(ultimoFechamento.diferenca)}</small></div></div>}
       <div className="cash-form-heading"><Icon name="store" size={21} /><div><h2>Abertura de caixa</h2><p>{lojas.length} mercado(s) disponível(is) para você</p></div></div>
       {!lojas.length ? <div className="cash-empty-access"><Icon name="shield" size={24} /><strong>Nenhum mercado liberado</strong><p>Peça ao administrador que associe seu usuário a um mercado com local habilitado para venda.</p></div> : <>
-        <label>Mercado<select required value={lojaId} onChange={event => { const next = lojas.find(item => String(item.id) === event.target.value); setLojaId(event.target.value); setLocalId(next?.locais.length === 1 ? String(next.locais[0].id) : ''); }}><option value="">Escolha o mercado</option>{lojas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label>Local de venda<select required value={localId} disabled={!lojaId} onChange={event => setLocalId(event.target.value)}><option value="">Escolha o local</option>{loja?.locais.map(local => <option key={local.id} value={local.id}>{local.nome}</option>)}</select></label>
-        <label>Fundo de troco inicial<input type="number" min="0" step="0.01" inputMode="decimal" required value={saldo} onChange={event => setSaldo(event.target.value)} /><small>Dinheiro que já está no caixa antes da primeira venda.</small></label>
+        <label>Mercado<select required value={lojaId} onChange={event => { const next = lojas.find(item => String(item.id) === event.target.value); setLojaId(event.target.value); setLocalId(next?.locais.length === 1 ? String(next.locais[0].id) : ''); setSaldo(''); }}><option value="">Escolha o mercado</option>{lojas.map(item => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+        <label>Local de venda<select required value={localId} disabled={!lojaId} onChange={event => { setLocalId(event.target.value); setSaldo(''); }}><option value="">Escolha o local</option>{loja?.locais.map(local => <option key={local.id} value={local.id}>{local.nome}</option>)}</select></label>
+        <label>Valor inicial em caixa<input aria-label="Valor inicial em caixa" type="number" min="0" max="999999999.99" step="0.01" inputMode="decimal" required placeholder="Informe o valor inicial" value={saldo} onChange={event => setSaldo(event.target.value)} /><small>Informe o dinheiro que já está no caixa antes da primeira venda. Se começar sem dinheiro, digite 0,00.</small></label>
         <label>Observações <span className="cash-optional">opcional</span><textarea rows={2} maxLength={1000} value={observacao} onChange={event => setObservacao(event.target.value)} placeholder="Alguma informação para este expediente?" /></label>
         {error && <div className="pos-alert" role="alert">{error}</div>}
-        <button className="cash-open-submit" type="submit" disabled={saving || !lojaId || !localId}><Icon name="check" size={19} />{saving ? 'Abrindo caixa...' : 'Abrir caixa e começar'}</button>
+        <button className="cash-open-submit" type="submit" disabled={saving || !lojaId || !localId || !saldoValido}><Icon name="check" size={19} />{saving ? 'Abrindo caixa...' : 'Abrir caixa e começar'}</button>
       </>}
     </form>
   </div>;

@@ -92,6 +92,10 @@ test('caixas, operadores e isolamento entre mercados', { timeout: 60000 }, async
     await request('/api/vendas', cashier.token, 'POST', sale(1, 'PIX'), 400);
     const ctx = await request('/api/caixas/contexto', cashier.token);
     assert.deepEqual(ctx.lojas.map(l => l.id), [1]); assert.equal(ctx.sessao, null);
+    for (const saldoInicial of [undefined, null, '', '   ', false]) {
+      await request('/api/caixas/abrir', cashier.token, 'POST', { lojaId: 1, localId: 1, saldoInicial }, 400);
+    }
+    assert.equal((await request('/api/caixas/contexto', cashier.token)).sessao, null, 'Não pode abrir caixa com saldo ausente ou implícito.');
     await request('/api/caixas/abrir', cashier.token, 'POST', { lojaId: store2, localId: local2, saldoInicial: 50 }, [400,403]);
     await request('/api/caixas/abrir', cashier.token, 'POST', { lojaId: 1, localId: local2, saldoInicial: 50 }, [400,403]);
     for (const value of [-1, '', 'Infinity', true]) await request('/api/caixas/abrir', cashier.token, 'POST', { lojaId: 1, localId: 1, saldoInicial: value }, 400);
