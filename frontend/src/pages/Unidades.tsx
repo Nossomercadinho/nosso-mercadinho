@@ -975,8 +975,8 @@ export default function Unidades() {
             style={{
               display: 'grid',
               gridTemplateColumns:
-                'minmax(0, 1fr)',
-              gap: 18,
+                'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
+              gap: 12,
             }}
           >
             {lojasFiltradas.map((loja) => (
@@ -986,13 +986,13 @@ export default function Unidades() {
                   background: '#fff',
                   border:
                     '1px solid #ececec',
-                  borderRadius: 18,
-                  padding: 20,
+                  borderRadius: 12,
+                  padding: 14,
                   boxShadow:
-                    '0 10px 28px rgba(0,0,0,.06)',
+                    '0 3px 12px rgba(0,0,0,.04)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 16,
+                  gap: 10,
                 }}
               >
                 <div
@@ -1000,7 +1000,7 @@ export default function Unidades() {
                     display: 'flex',
                     justifyContent:
                       'space-between',
-                    gap: 16,
+                    gap: 10,
                     alignItems:
                       'flex-start',
                   }}
@@ -1015,7 +1015,7 @@ export default function Unidades() {
                         textTransform:
                           'uppercase',
                         padding:
-                          '5px 8px',
+                          '3px 7px',
                         borderRadius: 999,
                         background:
                           loja.tipo ===
@@ -1027,7 +1027,7 @@ export default function Unidades() {
                           'MATRIZ'
                             ? '#e86f00'
                             : '#555',
-                        marginBottom: 10,
+                        marginBottom: 6,
                       }}
                     >
                       {loja.tipo ===
@@ -1040,7 +1040,7 @@ export default function Unidades() {
                       style={{
                         margin:
                           '0 0 6px',
-                        fontSize: 22,
+                        fontSize: 18,
                       }}
                     >
                       {loja.nome}
@@ -1059,19 +1059,19 @@ export default function Unidades() {
 
                   <div
                     style={{
-                      minWidth: 96,
+                      minWidth: 62,
                       textAlign: 'center',
                       background:
                         '#fff7ed',
                       borderRadius: 12,
                       padding:
-                        '10px 12px',
+                        '7px 9px',
                     }}
                   >
                     <strong
                       style={{
                         display: 'block',
-                        fontSize: 22,
+                        fontSize: 18,
                       }}
                     >
                       {Number(
@@ -1089,8 +1089,8 @@ export default function Unidades() {
                 <div
                   style={{
                     display: 'grid',
-                    gap: 7,
-                    fontSize: 14,
+                    gap: 5,
+                    fontSize: 13,
                   }}
                 >
                   {(loja.cidade ||
@@ -1155,6 +1155,7 @@ export default function Unidades() {
                   <button
                     type="button"
                     className="secondary-button"
+                    style={{ padding: '8px 10px', minHeight: 36, fontSize: 12 }}
                     onClick={() =>
                       abrirLocais(loja)
                     }
@@ -1165,6 +1166,7 @@ export default function Unidades() {
                   <button
                     type="button"
                     className="editar-button"
+                    style={{ padding: '8px 10px', minHeight: 36, fontSize: 12 }}
                     onClick={() =>
                       editarLoja(loja)
                     }
@@ -1175,6 +1177,7 @@ export default function Unidades() {
                   <button
                     type="button"
                     className="excluir-button"
+                    style={{ padding: '8px 10px', minHeight: 36, fontSize: 12 }}
                     onClick={() =>
                       excluirLoja(loja)
                     }
