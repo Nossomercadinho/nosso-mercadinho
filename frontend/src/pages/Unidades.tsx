@@ -1,5 +1,4 @@
 import { apiFetch } from '../services/apiClient';
-import { useLoja } from '../contexts/LojaContext';
 import { useEffect, useMemo, useState } from 'react';
 
 type Loja = {
@@ -67,7 +66,6 @@ function fetchAutenticado(
 }
 
 export default function Unidades() {
-  const { lojaAtiva } = useLoja();
   const [lojas, setLojas] = useState<Loja[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -140,7 +138,7 @@ export default function Unidades() {
         return;
       }
 
-      setLojas((data.lojas || []).filter((loja: Loja) => loja.id === lojaAtiva?.id));
+      setLojas(data.lojas || []);
     } catch (error) {
       console.error(error);
       setMensagem('Não foi possível conectar ao servidor.');
@@ -757,7 +755,7 @@ export default function Unidades() {
         <div>
           <h1>Unidades</h1>
           <p>
-            Dados de {lojaAtiva?.nome || 'seu mercado'} e seus locais de estoque.
+            Todas as unidades autorizadas e seus locais de estoque.
           </p>
         </div>
 
@@ -962,7 +960,7 @@ export default function Unidades() {
         </div>
       )}
 
-      <section className="active-store-management"><p className="active-store-note">{lojaAtiva?.nome} · {lojas[0]?.quantidade_locais || 0} locais de estoque</p>
+      <section className="active-store-management"><p className="active-store-note">{lojas.length} unidade(s) · {lojas.reduce((total, loja) => total + Number(loja.quantidade_locais || 0), 0)} locais de estoque</p>
 
         {carregando ? (
           <div className="unidade-vazia">
