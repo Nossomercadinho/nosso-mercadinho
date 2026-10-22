@@ -41,7 +41,7 @@ export default function FechamentoDiario() {
 
   const centavos = (campo: string) => Math.round(Number(form[campo] || 0) * 100);
   const dinheiroApurado = (centavos('final') - centavos('inicial') + centavos('retiradas')) / 100;
-  const total = modoCaixa ? (centavos('final') - centavos('inicial') + centavos('retiradas') + centavos('itau') + centavos('pagbank')) / 100 : ['dinheiro','pix','debito','credito','aPrazo','outros']
+  const total = !matriz ? Number(form.outros || 0) : modoCaixa ? (centavos('final') - centavos('inicial') + centavos('retiradas') + centavos('itau') + centavos('pagbank')) / 100 : ['dinheiro','pix','debito','credito','aPrazo','outros']
     .reduce((s, k) => s + Number(form[k] || 0), 0);
 
   useEffect(() => {
@@ -93,6 +93,9 @@ export default function FechamentoDiario() {
         inicial: String(f.caixa?.inicial ?? ''), final: String(f.caixa?.final ?? ''),
         retiradas: String(f.caixa?.retiradas ?? ''), itau: String(f.caixa?.itau ?? ''),
         pagbank: String(f.caixa?.pagbank ?? ''),
+        // As filiais lançam somente o total das maquininhas. O total de
+        // fechamentos antigos é preservado ao abrir para conferência.
+        ...(!matriz ? { dinheiro: '', pix: '', debito: '', credito: '', aPrazo: '', outros: String(f.totalInformado ?? 0) } : {}),
       });
     } catch (e: any) {
       if (consulta === consultaAtual.current) setErro(e?.message || 'Erro ao carregar fechamento.');
@@ -210,7 +213,7 @@ export default function FechamentoDiario() {
           </p>}
 
           <div className="module-fields">
-            {(modoCaixa ? [
+            {(!matriz ? [['outros', 'Maquininhas']] : modoCaixa ? [
               ['inicial','Caixa inicial'], ['final','Valor final em caixa'],
               ['itau','Maquininha Laranja / Itaú'], ['pagbank','Maquininha Amarela / PagBank'],
               ['retiradas','Retirada em dinheiro'],
@@ -233,7 +236,7 @@ export default function FechamentoDiario() {
               <small>Dinheiro apurado: caixa final − caixa inicial + retiradas</small>
               <strong style={{display:'block',margin:'5px 0 12px'}}>{moeda(dinheiroApurado)}</strong>
             </>}
-            <small>{modoCaixa ? 'Faturamento diário: dinheiro apurado + Itaú + PagBank' : 'Total informado manualmente'}</small>
+            <small>{!matriz ? 'Faturamento diário: maquininhas' : modoCaixa ? 'Faturamento diário: dinheiro apurado + Itaú + PagBank' : 'Total informado manualmente'}</small>
             <strong style={{display:'block',fontSize:28,marginTop:5}}>{moeda(total)}</strong>
           </div>
 
@@ -263,7 +266,7 @@ export default function FechamentoDiario() {
 
         <section style={card}>
           <h2 style={{marginTop:0}}>Histórico</h2>
-          <p className="active-store-note">{lojaAtiva?.nome}</p>
+          <p className="active-store-note">{lojaAtiva?.nome}{!matriz && ' · Maquininhas'}</p>
           {historico.length===0 ? <p>Nenhum fechamento salvo.</p> :
             historico.map(f => (
               <button key={f.id} type="button" onClick={()=>{
