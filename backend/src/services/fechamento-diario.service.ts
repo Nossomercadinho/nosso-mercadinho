@@ -1,6 +1,43 @@
 import db from '../database/database';
+import { transacaoCaixa } from './caixas.service';
 
 export class ErroValidacaoFechamento extends Error {}
+
+// A conferência detalhada pertence ao snapshot auditado do fechamento.
+// Mantém o contrato das tabelas existentes e os lançamentos antigos intactos.
+function comConferencia(row: any) {
+  if (!row) return row;
+  const { detalhesConferencia, ...fechamento } = row;
+  if (detalhesConferencia) {
+    const snapshot = JSON.parse(detalhesConferencia);
+    if (snapshot.caixa?.versao === 1) fechamento.caixa = snapshot.caixa;
+  }
+  return fechamento;
+}
+
+function calcularConferencia(valor: any) {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) {
+    throw new ErroValidacaoFechamento('Informe os valores da conferência de caixa.');
+  }
+  const caixa: any = { versao: 1 };
+  const centavos: any = {};
+  for (const campo of ['inicial', 'final', 'retiradas', 'itau', 'pagbank']) {
+    const bruto = valor[campo];
+    const numero = Number(bruto);
+    if (bruto == null || !['number', 'string'].includes(typeof bruto) || String(bruto).trim() === ''
+      || !Number.isFinite(numero) || numero < 0 || !Number.isSafeInteger(Math.round(numero * 100))) {
+      throw new ErroValidacaoFechamento(`Valor inválido em ${campo}.`);
+    }
+    centavos[campo] = Math.round(numero * 100);
+    caixa[campo] = centavos[campo] / 100;
+  }
+  const dinheiro = centavos.final - centavos.inicial + centavos.retiradas;
+  const total = dinheiro + centavos.itau + centavos.pagbank;
+  if (!Number.isSafeInteger(dinheiro) || !Number.isSafeInteger(total)) {
+    throw new ErroValidacaoFechamento('Valores da conferência excedem o limite permitido.');
+  }
+  return { caixa, dinheiro: dinheiro / 100, total: total / 100 };
+}
 
 function run(sql: string, params: any[] = []) {
   return new Promise<{ lastID: number; changes: number }>((resolve, reject) => {
@@ -83,9 +120,11 @@ export async function listarFechamentos(lojaId: number, inicio?: string, fim?: s
     params.push(fim);
   }
 
-  return all<any>(`
+  const linhas = await all<any>(`
     SELECT
       f.id,
+      (SELECT h.dados_depois FROM fechamentos_diarios_historico h
+       WHERE h.fechamento_id = f.id ORDER BY h.id DESC LIMIT 1) AS detalhesConferencia,
       f.data_referencia AS dataReferencia,
       f.loja_id AS lojaId,
       l.nome AS lojaNome,
@@ -111,13 +150,16 @@ export async function listarFechamentos(lojaId: number, inicio?: string, fim?: s
     ORDER BY f.data_referencia DESC, f.id DESC
     LIMIT 366
   `, params);
+  return linhas.map(comConferencia);
 }
 
 export async function buscarFechamento(data: string, lojaId: number) {
   await garantirEstruturaFechamento();
-  return get<any>(`
+  const linha = await get<any>(`
     SELECT
       f.id,
+      (SELECT h.dados_depois FROM fechamentos_diarios_historico h
+       WHERE h.fechamento_id = f.id ORDER BY h.id DESC LIMIT 1) AS detalhesConferencia,
       f.data_referencia AS dataReferencia,
       f.loja_id AS lojaId,
       l.nome AS lojaNome,
@@ -142,18 +184,32 @@ export async function buscarFechamento(data: string, lojaId: number) {
     WHERE f.data_referencia = ? AND f.loja_id = ?
     LIMIT 1
   `, [data, lojaId]);
+  return comConferencia(linha);
 }
 
 export async function salvarFechamento(dados: any) {
   await garantirEstruturaFechamento();
+  return transacaoCaixa(() => gravarFechamento(dados));
+}
+
+async function gravarFechamento(dados: any) {
 
   const atual = await buscarFechamento(dados.dataReferencia, dados.lojaId);
   if (atual && String(dados.motivoAlteracao || '').trim().length < 5) {
     throw new ErroValidacaoFechamento('Para alterar um fechamento já salvo, informe um motivo com pelo menos 5 caracteres.');
   }
+  let conferencia: ReturnType<typeof calcularConferencia> | null = null;
+  if (dados.caixa !== undefined) {
+    const loja = await get<any>('SELECT tipo FROM lojas WHERE id = ? AND ativo = 1', [dados.lojaId]);
+    if (loja?.tipo !== 'MATRIZ') throw new ErroValidacaoFechamento('A conferência de caixa é exclusiva da Matriz.');
+    conferencia = calcularConferencia(dados.caixa);
+    dados = { ...dados, dinheiro: conferencia.dinheiro, pix: 0, debito: 0, credito: 0, aPrazo: 0, outros: 0 };
+  } else if (atual?.caixa) {
+    throw new ErroValidacaoFechamento('Atualize a página para alterar os valores da conferência de caixa.');
+  }
   const total = ['dinheiro','pix','debito','credito','aPrazo','outros']
     .reduce((s, k) => s + Number(dados[k] || 0), 0);
-  const totalArredondado = Math.round((total + Number.EPSILON) * 100) / 100;
+  const totalArredondado = conferencia?.total ?? Math.round((total + Number.EPSILON) * 100) / 100;
 
   if (!atual) {
     const r = await run(`
@@ -168,7 +224,7 @@ export async function salvarFechamento(dados: any) {
       dados.observacao || null
     ]);
 
-    const criado = await buscarFechamento(dados.dataReferencia, dados.lojaId);
+    const criado = { ...await buscarFechamento(dados.dataReferencia, dados.lojaId), ...(conferencia ? { caixa: conferencia.caixa } : {}) };
     await run(`
       INSERT INTO fechamentos_diarios_historico
         (fechamento_id, usuario_id, motivo, dados_depois)
@@ -189,7 +245,7 @@ export async function salvarFechamento(dados: any) {
     dados.usuarioId || null, dados.observacao || null, atual.id
   ]);
 
-  const depois = await buscarFechamento(dados.dataReferencia, dados.lojaId);
+  const depois = { ...await buscarFechamento(dados.dataReferencia, dados.lojaId), ...(conferencia ? { caixa: conferencia.caixa } : {}) };
   await run(`
     INSERT INTO fechamentos_diarios_historico
       (fechamento_id, usuario_id, motivo, dados_antes, dados_depois)

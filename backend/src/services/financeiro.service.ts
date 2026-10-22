@@ -1,4 +1,5 @@
 import { comBloqueioBanco } from './caixas.service';
+import { garantirEstruturaFechamento } from './fechamento-diario.service';
 import { exigirCadastroNaLoja, garantirVinculosCadastros, lojaCadastroAtual } from './cadastros-lojas.service';
 import { buscarFornecedorPorId } from './fornecedores.service';
 import db from '../database/database';
@@ -1897,6 +1898,7 @@ export async function obterResumoFinanceiro(
     lojaId?: number;
   } = {}
 ) {
+  await garantirEstruturaFechamento();
   const hoje =
     hojeISO();
 
@@ -2098,10 +2100,24 @@ export async function obterResumoFinanceiro(
       ]
     );
 
-  const entradasMes =
-    numeroSeguro(
-      realizado?.entradas_mes
-    );
+  // Fechamentos manuais são uma fonte própria do painel; não criamos baixas
+  // artificiais. Se o dia já foi lançado pelo fechamento do Financeiro,
+  // o recebimento acima é a fonte e não deve ser contado novamente.
+  const fechamentos = await executarGet<any>(`
+    SELECT COALESCE(SUM(f.total_informado), 0) AS total
+    FROM fechamentos_diarios f
+    WHERE f.data_referencia BETWEEN ? AND ?
+      AND ${escopoLojaSql('f.loja_id')}
+      ${filtros.lojaId ? 'AND f.loja_id = ?' : ''}
+      AND NOT EXISTS (
+        SELECT 1 FROM financeiro_lancamentos fl
+        WHERE fl.loja_id = f.loja_id
+          AND fl.tipo = 'ENTRADA' AND fl.status <> 'CANCELADO'
+          AND fl.numero_documento = 'FECHAMENTO-' || f.data_referencia || '-' || f.loja_id
+      )
+  `, [inicioMes, fimMes, ...parametrosLoja]);
+  const entradasFechamentos = numeroSeguro(fechamentos?.total);
+  const entradasMes = Math.round((numeroSeguro(realizado?.entradas_mes) + entradasFechamentos) * 100) / 100;
 
   const saidasMes =
     numeroSeguro(
@@ -2122,6 +2138,7 @@ export async function obterResumoFinanceiro(
       saidasMes,
 
     entradasMes,
+    entradasFechamentos,
 
     saidasMes,
 

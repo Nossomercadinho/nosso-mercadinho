@@ -195,7 +195,7 @@ export default function Dashboard({
     return modules.filter(([, codes]) => codes.some(code => usuario?.permissoes?.includes(code))).map(([label]) => label);
   }, [usuario]);
 
-  useEffect(() => { if (podeFinanceiro && lojaAtiva) void carregarResumoFinanceiro(); else setResumoFinanceiro(resumoVazio); }, [podeFinanceiro, lojaAtiva?.id]);
+  useEffect(() => { if (podeFinanceiro && lojaAtiva) void carregarResumoFinanceiro(); else setResumoFinanceiro(resumoVazio); }, [podeFinanceiro, lojaAtiva?.id, paginaAtiva]);
 
   useEffect(() => {
     if (modoPdvDireto || somentePdv) {
@@ -348,7 +348,7 @@ export default function Dashboard({
       {
         titulo: 'Entradas do mês',
         valor: resumoFinanceiro.entradasMes,
-        descricao: 'Valores recebidos no período',
+        descricao: 'Recebimentos e fechamentos diários do período',
         icone: '↑',
         classe: 'entrada',
       },

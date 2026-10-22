@@ -78,6 +78,7 @@ router.put(
       if (!lojaPermitida(req.usuario, lojaId)) return res.status(403).json({ sucesso: false, erro: 'Você não tem acesso ao mercado deste fechamento.' });
       const fechamento = await salvarFechamento({
         ...dados,
+        ...(req.body?.caixa !== undefined ? { caixa: req.body.caixa } : {}),
         dataReferencia,
         lojaId,
         executorId: Number(req.body?.executorId || 0) || null,

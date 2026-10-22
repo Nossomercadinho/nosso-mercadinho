@@ -172,6 +172,15 @@ O comportamento exclusivo do PDV é determinado por **permissões**, sem hardcod
 
 Ao criar um módulo, revisar juntos o código da permissão, o mapa das rotas/guards, o escopo por loja, o menu e os testes de acesso. Não ampliar papéis personalizados automaticamente para liberar uma tela nova.
 
+### Fechamento Diário da Matriz
+
+A conferência manual da Matriz recebe `caixa: { inicial, final, retiradas, itau, pagbank }`.
+O servidor calcula, em centavos, `final - inicial + retiradas + itau + pagbank`.
+`dinheiro` guarda apenas `final - inicial + retiradas`; os outros campos antigos de pagamento ficam zerados nesse modo para evitar duplicação.
+O detalhamento versionado (`caixa.versao = 1`) fica no snapshot JSON `dados_depois` do histórico existente; consultas recuperam o snapshot mais recente. O fechamento e seu snapshot são gravados na mesma transação. Não requer migration.
+Fechamentos antigos por forma de pagamento e fechamentos de filiais mantêm o comportamento original. A conversão de um fechamento antigo é explícita na tela e exige motivo de alteração. Clientes antigos não podem sobrescrever uma conferência sem enviar seu detalhamento.
+O resumo financeiro soma os `total_informado` dos fechamentos do mês, respeitando a loja e a data de referência, sem criar baixas artificiais. Fechamentos com documento equivalente `FECHAMENTO-{data}-{loja}` no Financeiro não são somados novamente. A Visão Geral recarrega o resumo ao navegar.
+
 ## 7. Desenvolvimento local
 
 Usar **Node.js 22.x**, com versão compatível com o Vite do projeto (22.12 ou superior). As dependências têm lockfiles separados; a raiz não é um workspace npm.

@@ -143,4 +143,60 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     assert.equal((await request('/api/fechamento-diario?data=2026-10-14', cashier)).fechamento.totalInformado, 35);
     assert.equal((await get('SELECT COUNT(*) AS total FROM fechamentos_diarios_historico')).total, 2);
   });
+
+  await t.test('conferência da Matriz calcula faturamento e recupera os detalhes auditados', async () => {
+    const caixa = { inicial: 100, final: 300, retiradas: 50, itau: 200, pagbank: 300 };
+    const closing = { dataReferencia: '2026-10-15', lojaId: 1, caixa, dinheiro: 9999, pix: 9999, totalInformado: 99999 };
+    const saved = await request('/api/fechamento-diario', cashier, 'PUT', closing);
+    assert.equal(saved.fechamento.totalInformado, 750);
+    assert.equal(saved.fechamento.dinheiro, 250);
+    assert.equal(saved.fechamento.pix, 0, 'Campos antigos não podem duplicar o faturamento.');
+    const read = await request('/api/fechamento-diario?data=2026-10-15&lojaId=1', cashier);
+    assert.deepEqual(read.fechamento.caixa, { versao: 1, ...caixa });
+    const list = await request('/api/fechamento-diario?lojaId=1', cashier);
+    assert.deepEqual(list.fechamentos.find(f => f.dataReferencia === '2026-10-15').caixa, read.fechamento.caixa);
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...caixa, final: 350 } }, 400);
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...caixa, final: 350 }, motivoAlteracao: 'Recontagem física' });
+    const updated = await request('/api/fechamento-diario?data=2026-10-15&lojaId=1', cashier);
+    assert.equal(updated.fechamento.totalInformado, 800);
+    assert.equal(updated.fechamento.caixa.final, 350);
+    const audit = await get('SELECT dados_antes, dados_depois FROM fechamentos_diarios_historico WHERE fechamento_id = ? ORDER BY id DESC LIMIT 1', [updated.fechamento.id]);
+    assert.equal(JSON.parse(audit.dados_antes).caixa.final, 300);
+    assert.equal(JSON.parse(audit.dados_depois).caixa.final, 350);
+    await request('/api/fechamento-diario', cashier, 'PUT', { dataReferencia: '2026-10-15', dinheiro: 10, motivoAlteracao: 'Cliente antigo' }, 400);
+    assert.equal((await request('/api/fechamento-diario?data=2026-10-15', cashier)).fechamento.totalInformado, 800);
+  });
+
+  await t.test('conferência valida valores, preserva centavos e não mascara diferença negativa', async () => {
+    const closing = { dataReferencia: '2026-10-16', caixa: { inicial: 100, final: 80, retiradas: 0, itau: 0.1, pagbank: 0.2 } };
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...closing.caixa, inicial: -1 } }, 400);
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...closing.caixa, final: '' } }, 400);
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...closing.caixa, retiradas: 'abc' } }, 400);
+    const saved = await request('/api/fechamento-diario', cashier, 'PUT', closing);
+    assert.equal(saved.fechamento.dinheiro, -20);
+    assert.equal(saved.fechamento.totalInformado, -19.7);
+  });
+
+
+  await t.test('entradas do mês incluem fechamentos salvos uma vez e refletem correções', async () => {
+    const baseline = (await request('/api/financeiro/resumo?lojaId=1', admin)).resumo;
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-28`;
+    const closing = { lojaId: 1, dataReferencia: date, caixa: { inicial: 100, final: 120, retiradas: 7, itau: 20, pagbank: 30 } };
+    await request('/api/fechamento-diario', cashier, 'PUT', closing);
+    const first = (await request('/api/financeiro/resumo?lojaId=1', admin)).resumo;
+    assert.equal(first.entradasMes, Math.round((baseline.entradasMes + 77) * 100) / 100);
+    assert.equal(first.saldoMes, Math.round((first.entradasMes - first.saidasMes) * 100) / 100);
+    const again = (await request('/api/financeiro/resumo?lojaId=1', admin)).resumo;
+    assert.equal(again.entradasMes, first.entradasMes);
+    await request('/api/fechamento-diario', cashier, 'PUT', { ...closing, caixa: { ...closing.caixa, final: 131 }, motivoAlteracao: 'Recontagem do caixa' });
+    const updated = (await request('/api/financeiro/resumo?lojaId=1', admin)).resumo;
+    assert.equal(updated.entradasMes, Math.round((baseline.entradasMes + 88) * 100) / 100);
+    const outside = { ...closing, dataReferencia: '2000-01-01' };
+    await request('/api/fechamento-diario', cashier, 'PUT', outside);
+    assert.equal((await request('/api/financeiro/resumo?lojaId=1', admin)).resumo.entradasMes, updated.entradasMes);
+    await request('/api/financeiro/fechamentos-caixa', admin, 'POST', { lojaId: 1, dataFechamento: date, valorEspecie: 38, valorMaquininhas: 50 }, 201);
+    assert.equal((await request('/api/financeiro/resumo?lojaId=1', admin)).resumo.entradasMes, updated.entradasMes, 'O mesmo dia registrado no Financeiro não pode duplicar o fechamento diário.');
+  });
+
 });
