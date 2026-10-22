@@ -1,4 +1,4 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, sincronizarFechamentosFinanceiro } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import { useLoja } from '../contexts/LojaContext';
 import {
@@ -740,6 +740,11 @@ export default function Financeiro() {
         return;
       }
 
+      if (lojaAtiva) {
+        const sincronizacao = await sincronizarFechamentosFinanceiro(lojaAtiva.id);
+        if (sincronizacao.conflitos.length) setErro('Há fechamentos com valores diferentes já lançados no Financeiro. Confira as datas antes de alterar.');
+      }
+
       const tarefas = [
         carregarLojas(),
         carregarFornecedores(),
@@ -751,6 +756,8 @@ export default function Financeiro() {
       }
 
       await Promise.all(tarefas);
+    } catch (error: any) {
+      setErro(error?.message || 'Não foi possível atualizar o Financeiro.');
     } finally {
       setCarregando(false);
     }
@@ -2521,6 +2528,10 @@ Os totais do Financeiro serão recalculados.`
               type="button"
               className="financeiro-btn-fechamento"
               onClick={() => {
+                if (usuario?.permissoes?.includes('fechamento')) {
+                  window.location.hash = encodeURIComponent('Fechamento Diário');
+                  return;
+                }
                 setMostrarFechamento(
                   (atual) => !atual
                 );
@@ -4396,7 +4407,12 @@ Os totais do Financeiro serão recalculados.`
                             </button>
                           )}
 
-                        <button
+                        {String(lancamento.numero_documento || '').startsWith('FECHAMENTO-DIARIO-') ? (
+                          usuario?.permissoes?.includes('fechamento') ? <button type="button" className="financeiro-btn-baixa" onClick={() => {
+                            sessionStorage.setItem('nm-fechamento-data', `${lojaAtiva?.id}:${String(lancamento.data_vencimento).slice(0, 10)}`);
+                            window.location.hash = encodeURIComponent('Fechamento Diário');
+                          }}>Ver fechamento</button> : <small>Integrado do fechamento diário</small>
+                        ) : <button
                           type="button"
                           className="financeiro-btn-excluir"
                           onClick={() =>
@@ -4407,7 +4423,7 @@ Os totais do Financeiro serão recalculados.`
                           title="Excluir lançamento"
                         >
                           Excluir
-                        </button>
+                        </button>}
                       </div>
                     </td>
                   </tr>

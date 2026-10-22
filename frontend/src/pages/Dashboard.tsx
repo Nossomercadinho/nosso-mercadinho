@@ -1,4 +1,4 @@
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, sincronizarFechamentosFinanceiro } from '../services/apiClient';
 import {
   useEffect,
   useMemo,
@@ -131,7 +131,7 @@ export default function Dashboard({
   onLogout,
   modoPdvDireto = false,
 }: DashboardProps) {
-  const { lojaAtiva, carregando: carregandoLoja, erro: erroLoja, atualizarLojas } = useLoja();
+  const { lojaAtiva, lojas, carregando: carregandoLoja, erro: erroLoja, atualizarLojas } = useLoja();
   const [usuario, setUsuario] = useState<UsuarioLogado | null>(() => {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch { return null; }
   });
@@ -141,6 +141,8 @@ export default function Dashboard({
   const somentePdv = permissoes.length === 1 && permissoes.includes('pdv');
   const podeConsultarHistorico = permissoes.includes('caixas');
   const resumoVersion = useRef(0);
+  const [unidadeResumoId, setUnidadeResumoId] = useState('');
+  const lojasResumoIds = lojas.map(loja => loja.id).join(',');
 
   useEffect(() => {
     let disposed = false;
@@ -195,7 +197,7 @@ export default function Dashboard({
     return modules.filter(([, codes]) => codes.some(code => usuario?.permissoes?.includes(code))).map(([label]) => label);
   }, [usuario]);
 
-  useEffect(() => { if (podeFinanceiro && lojaAtiva) void carregarResumoFinanceiro(); else setResumoFinanceiro(resumoVazio); }, [podeFinanceiro, lojaAtiva?.id, paginaAtiva]);
+  useEffect(() => { if (!podeFinanceiro) setResumoFinanceiro(resumoVazio); else if (!carregandoLoja && paginaAtiva === 'Visão Geral') void carregarResumoFinanceiro(); }, [podeFinanceiro, carregandoLoja, lojasResumoIds, unidadeResumoId, paginaAtiva]);
 
   useEffect(() => {
     if (modoPdvDireto || somentePdv) {
@@ -241,9 +243,17 @@ export default function Dashboard({
     setErroFinanceiro('');
 
     try {
+      const selecionada = unidadeResumoId && lojas.some(loja => String(loja.id) === unidadeResumoId) ? unidadeResumoId : '';
+      const unidades = selecionada ? lojas.filter(loja => String(loja.id) === selecionada) : lojas;
+      for (const unidade of unidades) {
+        if (version !== resumoVersion.current) return;
+        await sincronizarFechamentosFinanceiro(unidade.id);
+      }
+      const parametros = new URLSearchParams({ consolidado: '1' });
+      if (selecionada) parametros.set('lojaId', selecionada);
       const resposta =
         await fetchAutenticado(
-          `${API}/financeiro/resumo`
+          `${API}/financeiro/resumo?${parametros}`
         );
 
       const dados =
@@ -419,9 +429,17 @@ export default function Dashboard({
               <div>
                 <span className="overview-eyebrow">RESUMO FINANCEIRO</span>
                 <h2>Indicadores do mês</h2>
-                <p>Visão consolidada das entradas, saídas e compromissos.</p>
+                <p>{unidadeResumoId ? `Entradas, saídas e compromissos de ${lojas.find(loja => String(loja.id) === unidadeResumoId)?.nome || 'unidade selecionada'}.` : 'Entradas, saídas e compromissos de todas as unidades autorizadas.'}</p>
               </div>
 
+              <label style={{display:'grid',gap:5,minWidth:200,fontSize:13}}>
+                Unidades no resumo
+                <select aria-label="Unidades no resumo" value={unidadeResumoId} onChange={e => setUnidadeResumoId(e.target.value)}
+                  style={{padding:'9px 12px',minHeight:40,border:'1px solid #d1d5db',borderRadius:8,background:'#fff'}}>
+                  <option value="">Todas as unidades</option>
+                  {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
+                </select>
+              </label>
               <button
                 type="button"
                 className="overview-atualizar"

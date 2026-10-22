@@ -1,4 +1,5 @@
 import { comBloqueioBanco } from './caixas.service';
+import { exigirEdicaoNaOrigem } from './fechamento-financeiro.service';
 import { garantirEstruturaFechamento } from './fechamento-diario.service';
 import { exigirCadastroNaLoja, garantirVinculosCadastros, lojaCadastroAtual } from './cadastros-lojas.service';
 import { buscarFornecedorPorId } from './fornecedores.service';
@@ -761,6 +762,8 @@ export async function verificarPossivelDuplicidade(
 async function criarLancamentoFinanceiroImpl(
   dados: CriarLancamentoPayload
 ) {
+  if (String(dados.numeroDocumento || '').startsWith('FECHAMENTO-DIARIO-')) throw new Error('Documento reservado à integração de fechamentos.');
+
   await garantirVinculosCadastros();
   dados = { ...dados, lojaId: lojaCadastroAtual(Number(dados.lojaId) || undefined) };
   if (dados.fornecedorId) await exigirCadastroNaLoja('fornecedor', Number(dados.fornecedorId), Number(dados.lojaId));
@@ -1404,10 +1407,12 @@ async function atualizarLancamentoFinanceiroImpl(
   id: number,
   dados: AtualizarLancamentoPayload
 ) {
+  if (String(dados.numeroDocumento || '').startsWith('FECHAMENTO-DIARIO-')) throw new Error('Documento reservado à integração de fechamentos.');
   const atual =
     await buscarLancamentoFinanceiroPorId(
       id
     );
+  exigirEdicaoNaOrigem(atual);
   if (dados.lojaId && Number(dados.lojaId) !== Number(atual.loja_id)) throw new Error('O mercado de um lançamento existente não pode ser alterado.');
   if (dados.fornecedorId) await exigirCadastroNaLoja('fornecedor',Number(dados.fornecedorId),Number(atual.loja_id));
 
@@ -1627,6 +1632,7 @@ async function registrarBaixaFinanceiraImpl(
     await buscarLancamentoFinanceiroPorId(
       lancamentoId
     );
+  exigirEdicaoNaOrigem(lancamento);
 
   if (
     lancamento.status ===
@@ -1834,6 +1840,7 @@ async function cancelarLancamentoFinanceiroImpl(
     await buscarLancamentoFinanceiroPorId(
       id
     );
+  exigirEdicaoNaOrigem(lancamento);
 
   if (
     lancamento.status ===
@@ -2113,7 +2120,8 @@ export async function obterResumoFinanceiro(
         SELECT 1 FROM financeiro_lancamentos fl
         WHERE fl.loja_id = f.loja_id
           AND fl.tipo = 'ENTRADA' AND fl.status <> 'CANCELADO'
-          AND fl.numero_documento = 'FECHAMENTO-' || f.data_referencia || '-' || f.loja_id
+          AND (fl.numero_documento = 'FECHAMENTO-' || f.data_referencia || '-' || f.loja_id
+            OR fl.numero_documento = 'FECHAMENTO-DIARIO-' || f.id)
       )
   `, [inicioMes, fimMes, ...parametrosLoja]);
   const entradasFechamentos = numeroSeguro(fechamentos?.total);
@@ -2395,6 +2403,11 @@ async function salvarFechamentoCaixaImpl(
   if (!loja) {
     throw new Error('Unidade não encontrada.');
   }
+
+  const diarioIntegrado = await executarGet<any>(`SELECT id FROM financeiro_lancamentos
+    WHERE loja_id = ? AND data_vencimento = ? AND numero_documento LIKE 'FECHAMENTO-DIARIO-%'
+      AND status <> 'CANCELADO' LIMIT 1`, [lojaId, dataFechamento]);
+  if (diarioIntegrado) throw new Error('Já existe um fechamento diário integrado para esta unidade e data. Corrija-o no Fechamento Diário.');
 
   const existente = await executarGet<any>(
     `
@@ -2855,6 +2868,7 @@ async function excluirLancamentoFinanceiroImpl(
   await garantirTabelaFechamentosCaixa();
 
   const lancamento = await buscarLancamentoFinanceiroPorId(id);
+  exigirEdicaoNaOrigem(lancamento);
 
   if (lancamento.nota_entrada_id || lancamento.nota_entrada_parcela_id) {
     throw new Error(

@@ -25,7 +25,10 @@ const vazio = () => ({
 
 export default function FechamentoDiario() {
   const { lojaAtiva, lojas, selecionarLoja, carregando: carregandoLojas } = useLoja();
-  const [data, setData] = useState(hoje());
+  const [data, setData] = useState(() => {
+    const [loja, dia] = (sessionStorage.getItem('nm-fechamento-data') || '').split(':');
+    return loja === String(lojaAtiva?.id) && /^\d{4}-\d{2}-\d{2}$/.test(dia || '') ? dia : hoje();
+  });
   const [form, setForm] = useState<any>(vazio());
   const [executores, setExecutores] = useState<any[]>([]);
   const [historico, setHistorico] = useState<any[]>([]);
@@ -45,6 +48,7 @@ export default function FechamentoDiario() {
     .reduce((s, k) => s + Number(form[k] || 0), 0);
 
   useEffect(() => {
+    sessionStorage.removeItem('nm-fechamento-data');
     carregarExecutores();
   }, []);
 
@@ -260,7 +264,7 @@ export default function FechamentoDiario() {
 
           <small style={{display:'block',marginTop:10,color:'#737373'}}>
             {modoCaixa && 'O caixa final não é somado integralmente. As retiradas recompõem o dinheiro das vendas. Informe nas maquininhas os totais dos recebimentos, sem repetir valores. '}
-            O faturamento salvo compõe as Entradas do mês na Visão Geral. Este lançamento não importa valores da aba Vendas e não altera o Valor do Caixa.
+            O faturamento salvo gera automaticamente uma entrada recebida no Financeiro e compõe as Entradas do mês na Visão Geral. Este lançamento não importa valores da aba Vendas e não altera o Valor do Caixa.
           </small>
         </section>
 

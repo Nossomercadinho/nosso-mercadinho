@@ -75,6 +75,8 @@ test('API aplica papéis e isolamento de mercados durante sessões já autentica
   await run("INSERT INTO financeiro_lancamentos (empresa_id,tipo,descricao,valor_original,data_vencimento) VALUES (1,'SAIDA','Conta global',1000,'2026-10-15')");
   assert.deepEqual((await request('/financeiro', token)).lancamentos.map(l => l.id), [financeiro2]);
   assert.equal((await request('/financeiro/resumo', token)).resumo.aPagar, 20);
+  assert.equal((await request('/financeiro/resumo?consolidado=1', token)).resumo.aPagar, 20, 'O consolidado de uma pessoa restrita não pode mostrar Matriz ou contas globais.');
+  await request('/financeiro/resumo?consolidado=1&lojaId=1', token, 'GET', null, 403);
   await request(`/financeiro/${financeiro1}`, token, 'GET', null, 403);
   await request(`/financeiro/${financeiro1}`, token, 'PATCH', { descricao: 'Tentativa' }, 403);
   await request(`/financeiro/${financeiro2}`, token, 'PATCH', { descricao: 'Conta editada', lojaId: 1 }, 403);

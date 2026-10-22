@@ -195,8 +195,47 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     const outside = { ...closing, dataReferencia: '2000-01-01' };
     await request('/api/fechamento-diario', cashier, 'PUT', outside);
     assert.equal((await request('/api/financeiro/resumo?lojaId=1', admin)).resumo.entradasMes, updated.entradasMes);
-    await request('/api/financeiro/fechamentos-caixa', admin, 'POST', { lojaId: 1, dataFechamento: date, valorEspecie: 38, valorMaquininhas: 50 }, 201);
+    await request('/api/financeiro/fechamentos-caixa', admin, 'POST', { lojaId: 1, dataFechamento: date, valorEspecie: 38, valorMaquininhas: 50 }, 400);
     assert.equal((await request('/api/financeiro/resumo?lojaId=1', admin)).resumo.entradasMes, updated.entradasMes, 'O mesmo dia registrado no Financeiro não pode duplicar o fechamento diário.');
+  });
+
+
+  await t.test('integra lançamentos e recebimentos na mesma transação e corrige sem duplicar', async () => {
+    const f = (await request('/api/fechamento-diario?data=2026-10-15', admin)).fechamento;
+    const doc = `FECHAMENTO-DIARIO-${f.id}`;
+    const lancamento = await get('SELECT * FROM financeiro_lancamentos WHERE numero_documento = ?', [doc]);
+    assert.equal(lancamento.valor_original, f.totalInformado);
+    assert.equal(lancamento.status, 'RECEBIDO');
+    assert.equal((await get('SELECT COUNT(*) AS n FROM financeiro_baixas WHERE lancamento_id = ?', [lancamento.id])).n, 1);
+    assert.equal((await get('SELECT valor FROM financeiro_baixas WHERE lancamento_id = ?', [lancamento.id])).valor, f.totalInformado);
+    await request(`/api/financeiro/${lancamento.id}`, admin, 'DELETE', null, 400);
+    await request(`/api/financeiro/${lancamento.id}`, admin, 'PATCH', { valorOriginal: 1 }, 400);
+    await run(`CREATE TRIGGER falha_integracao BEFORE INSERT ON financeiro_baixas
+      WHEN NEW.data_baixa = '2030-01-02' BEGIN SELECT RAISE(ABORT, 'Falha simulada'); END`);
+    await request('/api/fechamento-diario', admin, 'PUT', { lojaId: 1, dataReferencia: '2030-01-02', outros: 42 }, 500);
+    assert.equal((await get("SELECT COUNT(*) AS n FROM fechamentos_diarios WHERE data_referencia = '2030-01-02'")).n, 0);
+    assert.equal((await get("SELECT COUNT(*) AS n FROM financeiro_lancamentos WHERE data_vencimento = '2030-01-02'")).n, 0);
+    await run('DROP TRIGGER falha_integracao');
+  });
+
+  await t.test('sincronização recupera fechamentos históricos por unidade e é idempotente', async () => {
+    const loja2 = await run("INSERT INTO lojas (empresa_id, nome, codigo, tipo) VALUES (1, 'TSC I teste', 'TSC1TESTE', 'FILIAL')");
+    const loja3 = await run("INSERT INTO lojas (empresa_id, nome, codigo, tipo) VALUES (1, 'TSC II teste', 'TSC2TESTE', 'FILIAL')");
+    const dia = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2, '0')}-23`;
+    const f2 = await run('INSERT INTO fechamentos_diarios (data_referencia, loja_id, outros, total_informado) VALUES (?, ?, 123.45, 123.45)', [dia, loja2]);
+    const f3 = await run('INSERT INTO fechamentos_diarios (data_referencia, loja_id, outros, total_informado) VALUES (?, ?, 234.56, 234.56)', [dia, loja3]);
+    await request('/api/financeiro/sincronizar-fechamentos', cashier, 'POST', { lojaId: loja2 }, 403);
+    const primeiro = await request('/api/financeiro/sincronizar-fechamentos', admin, 'POST', { lojaId: loja2 });
+    assert.equal(primeiro.resultado.criados, 1);
+    assert.equal((await get('SELECT COUNT(*) AS n FROM financeiro_lancamentos WHERE numero_documento = ?', [`FECHAMENTO-DIARIO-${f3}`])).n, 0);
+    const segundo = await request('/api/financeiro/sincronizar-fechamentos', admin, 'POST', { lojaId: loja2 });
+    assert.equal(segundo.resultado.criados, 0);
+    assert.equal(segundo.resultado.existentes, 1);
+    const resumo = (await request(`/api/financeiro/resumo?lojaId=${loja2}`, admin)).resumo;
+    assert.equal(resumo.entradasMes, 123.45);
+    assert.equal((await get('SELECT COUNT(*) AS n FROM financeiro_lancamentos WHERE numero_documento = ?', [`FECHAMENTO-DIARIO-${f2}`])).n, 1);
+    await request('/api/financeiro/sincronizar-fechamentos', admin, 'POST', { lojaId: loja3 });
+    assert.equal((await request(`/api/financeiro/resumo?lojaId=${loja3}`, admin)).resumo.entradasMes, 234.56);
   });
 
 });

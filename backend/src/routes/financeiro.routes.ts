@@ -25,7 +25,23 @@ import {
   lerCodigoBoleto,
 } from '../services/boleto.service';
 
+import { garantirEstruturaFechamento } from '../services/fechamento-diario.service';
+import { sincronizarFechamentosFinanceiro } from '../services/fechamento-financeiro.service';
+import { lojaPermitida } from '../services/acessos.service';
+
 const router = Router();
+
+router.post('/sincronizar-fechamentos', permitirPerfis('ADMINISTRADOR', 'CEO', 'OPERADOR'), async (req: any, res) => {
+  try {
+    const lojaId = Number(req.lojaAtivaId || req.body?.lojaId);
+    if (!lojaPermitida(req.usuario, lojaId)) return res.status(403).json({ sucesso: false, erro: 'Unidade não autorizada.' });
+    await garantirEstruturaFechamento();
+    const resultado = await sincronizarFechamentosFinanceiro(lojaId, req.usuario.id);
+    return res.json({ sucesso: true, resultado });
+  } catch (error: any) {
+    return res.status(500).json({ sucesso: false, erro: error?.message || 'Erro ao sincronizar fechamentos.' });
+  }
+});
 
 /*
 |--------------------------------------------------------------------------

@@ -162,7 +162,10 @@ export async function autorizarEscopoLoja(req: RequestAutenticada, res: Response
   if (!req.usuario) return res.status(401).json({ sucesso: false, erro: 'Não autenticado.' });
   const caminho = `${req.baseUrl}${req.path}`;
   const isento = /^\/api\/(?:auth|usuarios|caixas|vendas)(?:\/|$)/.test(caminho)
-    || (req.method === 'GET' && /^\/api\/lojas\/?$/.test(caminho));
+    || (req.method === 'GET' && /^\/api\/lojas\/?$/.test(caminho))
+    // O consolidado é somente leitura e mantém todas as lojas autorizadas
+    // do usuário, em vez de restringir o resumo à loja operacional ativa.
+    || (req.method === 'GET' && /^\/api\/financeiro\/resumo\/?$/.test(caminho) && req.query.consolidado === '1');
   let usuarioEscopo = req.usuario;
   const headerLoja = req.headers['x-loja-id'];
   if (!isento && headerLoja !== undefined) {

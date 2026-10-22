@@ -1,4 +1,5 @@
 import db from '../database/database';
+import { integrarFechamentoFinanceiro } from './fechamento-financeiro.service';
 import { transacaoCaixa } from './caixas.service';
 
 export class ErroValidacaoFechamento extends Error {}
@@ -230,6 +231,8 @@ async function gravarFechamento(dados: any) {
         (fechamento_id, usuario_id, motivo, dados_depois)
       VALUES (?, ?, ?, ?)
     `, [r.lastID, dados.usuarioId || null, 'LANÇAMENTO INICIAL', JSON.stringify(criado)]);
+    const integrado = await integrarFechamentoFinanceiro(criado, dados.usuarioId);
+    if (integrado.estado === 'conflito') throw new ErroValidacaoFechamento('Já existe um fechamento no Financeiro para esta data com outro valor. Confira o lançamento antes de alterar.');
     return criado;
   }
 
@@ -255,6 +258,8 @@ async function gravarFechamento(dados: any) {
     dados.motivoAlteracao || 'ALTERAÇÃO MANUAL',
     JSON.stringify(atual), JSON.stringify(depois)
   ]);
+  const integrado = await integrarFechamentoFinanceiro(depois, dados.usuarioId);
+  if (integrado.estado === 'conflito') throw new ErroValidacaoFechamento('Já existe um fechamento no Financeiro para esta data com outro valor. Confira o lançamento antes de alterar.');
   return depois;
 }
 

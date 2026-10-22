@@ -106,6 +106,8 @@ test('mercado ativo isola clientes, fornecedores, financeiro e NF-e mesmo para a
     await request('/financeiro',1,'POST',{fornecedorId:otherSupplier.id,tipo:'SAIDA',descricao:'Fornecedor fora',valorOriginal:1,dataVencimento:'2026-10-15'},400);
     assert.equal((await request('/financeiro/resumo',1)).resumo.aPagar,10);
     assert.equal((await request('/financeiro/resumo',store2)).resumo.aPagar,20);
+    assert.equal((await request('/financeiro/resumo?consolidado=1',store2)).resumo.aPagar,30, 'O consolidado inclui Matriz e Bairro apesar da loja ativa.');
+    assert.equal((await request('/financeiro/resumo?consolidado=1&lojaId=1',store2)).resumo.aPagar,10, 'O filtro do painel não modifica a unidade operacional.');
   });
   await t.test('venda a prazo e estoque seguem a sessão do caixa mesmo com outro mercado no header',async()=>{
     const session=(await request('/caixas/abrir',store2,'POST',{lojaId:1,localId:1,saldoInicial:0},201)).sessao;

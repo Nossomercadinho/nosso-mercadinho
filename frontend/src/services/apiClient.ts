@@ -14,3 +14,14 @@ export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   }
   return fetch(input, { ...init, headers });
 }
+
+/** Reconciles existing daily closings without creating duplicate receipts. */
+export async function sincronizarFechamentosFinanceiro(lojaId: number) {
+  const response = await apiFetch('/api/financeiro/sincronizar-fechamentos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Loja-Id': String(lojaId) },
+    body: JSON.stringify({ lojaId }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.sucesso) throw new Error(data.erro || 'Não foi possível integrar os fechamentos ao Financeiro.');
+  return data.resultado as { criados: number; atualizados: number; existentes: number; semValor: number; conflitos: { data: string; lancamentoId: number }[] };
+}
