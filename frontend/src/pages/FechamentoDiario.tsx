@@ -24,7 +24,7 @@ const vazio = () => ({
 });
 
 export default function FechamentoDiario() {
-  const { lojaAtiva } = useLoja();
+  const { lojaAtiva, lojas, selecionarLoja, carregando: carregandoLojas } = useLoja();
   const [data, setData] = useState(hoje());
   const [form, setForm] = useState<any>(vazio());
   const [executores, setExecutores] = useState<any[]>([]);
@@ -117,7 +117,7 @@ export default function FechamentoDiario() {
 
   async function salvar() {
     setErro(''); setMensagem('');
-    if (!lojaAtiva) { setErro('Selecione um mercado no topo do sistema.'); return; }
+    if (!lojaAtiva) { setErro('Selecione a unidade do fechamento.'); return; }
     if (modoCaixa && (form.inicial === '' || form.final === '')) {
       setErro('Informe o caixa inicial e o valor final em caixa.'); return;
     }
@@ -155,7 +155,7 @@ export default function FechamentoDiario() {
       });
       const d = await r.json();
       if (!r.ok || !d.sucesso) throw new Error(d.erro || 'Erro ao salvar.');
-      setMensagem('Fechamento diário salvo.');
+      setMensagem(`Fechamento diário de ${lojaAtiva.nome} salvo.`);
       setJaExiste(true);
       await carregarHistorico();
     } catch (e: any) {
@@ -184,7 +184,19 @@ export default function FechamentoDiario() {
       <div className="module-grid">
         <section style={card}>
           <h2 style={{marginTop:0}}>Lançamento manual</h2>
-          <p className="active-store-note">{lojaAtiva?.nome}</p>
+          <label style={{display:'block',marginBottom:16,fontWeight:600}}>
+            Unidade do fechamento
+            <select
+              aria-label="Unidade do fechamento"
+              value={lojaAtiva?.id ?? ''}
+              onChange={(e) => selecionarLoja(Number(e.target.value))}
+              disabled={salvando || carregandoLojas || lojas.length === 0}
+              style={{display:'block',width:'100%',marginTop:6,padding:'10px 12px',minHeight:44,border:'1px solid #d1d5db',borderRadius:8,background:'#fff',fontSize:16}}
+            >
+              {!lojaAtiva && <option value="">Selecione a unidade</option>}
+              {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
+            </select>
+          </label>
 
           <label>Data
             <input type="date" value={data} onChange={(e) => {
@@ -251,6 +263,7 @@ export default function FechamentoDiario() {
 
         <section style={card}>
           <h2 style={{marginTop:0}}>Histórico</h2>
+          <p className="active-store-note">{lojaAtiva?.nome}</p>
           {historico.length===0 ? <p>Nenhum fechamento salvo.</p> :
             historico.map(f => (
               <button key={f.id} type="button" onClick={()=>{
