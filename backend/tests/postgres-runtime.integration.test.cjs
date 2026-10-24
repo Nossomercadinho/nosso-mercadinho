@@ -99,7 +99,7 @@ test('API real PostgreSQL: autenticação, lojas, cadastros, estoque, PDV, créd
   await t.test('fornecedor/cliente/produto são vinculados somente à loja ativa e CPF/CNPJ reutilizam identidade',async()=>{
     supplier=(await request('/fornecedores',loja2,'POST',{razaoSocial:'Fornecedor Bairro PG',cpfCnpj:'12345678000199',telefone:'41999999999'},201)).fornecedor;
     customer=(await request('/clientes-prazo',loja2,'POST',{nome:'Cliente Bairro PG',cpf:'12345678901',telefone:'41999999999',limiteCredito:500},201)).cliente;
-    product=(await request('/produtos',loja2,'POST',{ean:'7899871230001',nome:'Café PostgreSQL',precoVenda:10,precoCusto:4,estoqueInicial:10,unidadeMedida:'UN'},201));
+    product=(await request('/produtos',loja2,'POST',{ean:'7899871230001',nome:'Café PostgreSQL',foto:'https://example.test/cafe-ficticio.png',precoVenda:10,precoCusto:4,estoqueInicial:10,unidadeMedida:'UN'},201));
     const second=await request('/produtos',loja2,'POST',{ean:'7899871230002',nome:'Segundo produto PG',precoVenda:4,precoCusto:2},201);
     await request(`/produtos/loja/${second.id}`,loja2,'PATCH',{ean:'7899871230001'},409);
     assert.ok(product.id);assert.equal((await request('/fornecedores',1)).fornecedores.length,0);assert.equal((await request('/clientes-prazo',1)).clientes.length,0);
@@ -113,6 +113,9 @@ test('API real PostgreSQL: autenticação, lojas, cadastros, estoque, PDV, créd
     session=(await request('/caixas/abrir',null,'POST',{lojaId:loja2,localId:local2,saldoInicial:100},201,cashToken)).sessao;
     assert.equal(session.lojaNome,'Bairro');assert.equal(session.usuarioNome,'Caixa Bairro');assert.equal(typeof session.abertoEm,'string');
     const suggestions=(await request('/vendas/pdv/pesquisar?q=7899',null,'GET',undefined,200,cashToken)).produtos;assert.equal(suggestions[0].precoVenda,10);
+    assert.equal(suggestions.find(p=>p.id===product.id).foto,'https://example.test/cafe-ficticio.png');
+    assert.equal(suggestions.find(p=>p.id!==product.id).foto,null);
+    const scanned=(await request('/vendas/pdv/produto/7899871230001',null,'GET',undefined,200,cashToken)).produto;assert.equal(scanned.foto,'https://example.test/cafe-ficticio.png');
     saleId=(await request('/vendas',null,'POST',{itens:[{produtoId:product.id,quantidade:2}],pagamentos:[{forma:'CARTAO_DEBITO',valor:20}]},201,cashToken)).vendaId;
     await request('/vendas',null,'POST',{itens:[{produtoId:product.id,quantidade:1}],pagamentos:[{forma:'A_PRAZO',valor:10}],cliente:{id:customer.id,nome:customer.nome,cpf:customer.cpf,telefone:customer.telefone}},201,cashToken);
     const clients=(await request('/clientes-prazo',loja2)).clientes;assert.equal(clients[0].limiteDisponivel,490);assert.equal(clients[0].saldoDevedor,10);

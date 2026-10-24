@@ -239,6 +239,7 @@ export async function buscarProdutoPdv(termo: string, lojaId: number, localId: n
         p.ean,
         p.nome,
         p.marca,
+        p.foto,
         CASE WHEN pl.precos_personalizados = 1 OR pl.preco_venda <> 0 THEN pl.preco_venda ELSE COALESCE(p.preco_venda,0) END AS preco_venda,
         p.unidade_medida,
         COALESCE((
@@ -289,6 +290,7 @@ export async function buscarProdutoPdv(termo: string, lojaId: number, localId: n
     ean: String(produto.ean || ''),
     nome: String(produto.nome),
     marca: produto.marca || null,
+    foto: produto.foto || null,
     precoVenda: numero(produto.preco_venda),
     unidadeMedida: produto.unidade_medida || null,
     quantidadeDisponivel: numero(produto.quantidade),
@@ -314,6 +316,7 @@ export async function pesquisarProdutosPdv(
         p.ean,
         p.nome,
         p.marca,
+        p.foto,
         CASE WHEN pl.precos_personalizados = 1 OR pl.preco_venda <> 0 THEN pl.preco_venda ELSE COALESCE(p.preco_venda,0) END AS preco_venda,
         p.unidade_medida,
         COALESCE((
@@ -354,6 +357,7 @@ export async function pesquisarProdutosPdv(
     ean: String(produto.ean || ''),
     nome: String(produto.nome),
     marca: produto.marca || null,
+    foto: produto.foto || null,
     precoVenda: numero(produto.preco_venda),
     unidadeMedida: produto.unidade_medida || null,
     quantidadeDisponivel: numero(produto.quantidade),

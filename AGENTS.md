@@ -194,6 +194,10 @@ O catálogo da unidade mostra `preco_custo` como último custo; o saldo ponderad
 
 PDFs textuais enviam `paginasPdf` com posições de texto para `ler-danfe-pdf.ts`; preservar colunas e páginas, sem reduzir DANFE tabular a uma linha simples. Cabeçalhos de continuação não substituem o quadro de totais. Número/série/CNPJ são obtidos da chave válida; `0 - ENTRADA` não é número fiscal. Fatores de embalagem podem vir de contagens explícitas na descrição, sempre com revisão. Reler documento já salvo não deve apagar a nova leitura na tela: atualizar o rascunho exige versão e justificativa, e entradas confirmadas são preservadas. PDFs reais de clientes e suas extrações ficam fora do Git; testes usam geometria e dados fictícios.
 
+### Fotos no PDV
+
+A busca por nome e a leitura por EAN do PDV retornam `foto` do catálogo. As sugestões e os itens da venda mostram a imagem com carregamento sob demanda e ícone alternativo quando ausente ou indisponível; falhas da imagem não impedem vender. O campo é compartilhado pelo produto entre unidades. Ao enriquecer fotos, preservar imagens existentes, conferir EAN e apresentação, e atualizar apenas foto/data, sem mudar preços, custos ou estoque. Fontes e conferências de dados reais ficam em `.local`, fora do Git.
+
 ### Custos simples e atualização compartilhada
 
 **Compras** prioriza `TabelaCustosSimples`; **Produtos → Lançar custos** usa o mesmo componente. `POST /api/produtos/custos/simples` exige Produtos, unidade ativa e confirmação explícita pelo botão. Recalcula total/quantidade em decimal, valida todos os itens e custos esperados antes de gravar o lote, e registra `TABELA_SIMPLES` no histórico existente. Não altera estoque, custo médio ou venda. Não requer novas tabelas/migration.

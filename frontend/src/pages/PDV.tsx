@@ -12,6 +12,19 @@ import type { FormEvent } from "react";
 
 const API = "/api";
 
+function FotoProdutoPdv({ src }: { src?: string | null }) {
+  const [indisponivel, setIndisponivel] = useState(false);
+  useEffect(() => setIndisponivel(false), [src]);
+  return (
+    <span className="pos-product-photo" aria-hidden="true">
+      {src && !indisponivel ? (
+        <img src={src} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+          onError={() => setIndisponivel(true)} />
+      ) : <Icon name="box" size={20} />}
+    </span>
+  );
+}
+
 type LocalPdv = {
   id: number;
   lojaId?: number;
@@ -28,6 +41,7 @@ type ProdutoPdv = {
   ean: string;
   nome: string;
   marca?: string | null;
+  foto?: string | null;
   precoVenda?: number;
   preco_venda?: number;
   unidadeMedida?: string | null;
@@ -41,6 +55,7 @@ type ItemCarrinho = {
   ean: string;
   nome: string;
   marca: string;
+  foto?: string | null;
   unidadeMedida: string;
   precoUnitario: number;
   quantidadeDisponivel: number;
@@ -241,6 +256,7 @@ export default function PDV({ podeConsultarHistorico, onLogout }: PDVProps) {
           ean: produto.ean,
           nome: produto.nome,
           marca: produto.marca || "",
+          foto: produto.foto || null,
           unidadeMedida: produto.unidadeMedida ?? produto.unidade_medida ?? "",
           precoUnitario: preco,
           quantidadeDisponivel: disponivel,
@@ -822,9 +838,7 @@ export default function PDV({ podeConsultarHistorico, onLogout }: PDVProps) {
                       className={index === activeResult ? "is-selected" : ""}
                       onClick={() => adicionarProdutoAoCarrinho(produto)}
                     >
-                      <span className="pos-result-symbol">
-                        <Icon name="box" size={18} />
-                      </span>
+                      <FotoProdutoPdv src={produto.foto} />
                       <span>
                         <strong>{produto.nome}</strong>
                         <small>
@@ -893,11 +907,14 @@ export default function PDV({ podeConsultarHistorico, onLogout }: PDVProps) {
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <div className="pos-item-description">
+                      <FotoProdutoPdv src={item.foto} />
+                      <div className="pos-item-text">
                       <strong>{item.nome}</strong>
                       <small>
                         {item.ean} · {moeda(item.precoUnitario)} /{" "}
                         {item.unidadeMedida || "un."}
                       </small>
+                      </div>
                     </div>
                     <div className="pos-quantity">
                       <button
