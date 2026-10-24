@@ -1,3 +1,5 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
+import {useLoja} from '../contexts/LojaContext';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import {
@@ -10,6 +12,7 @@ const API_URL =
   '/api';
 
 type Fornecedor = {
+  loja_id?:number;loja_nome?:string;
   id: number;
 
   empresa_id?: number | null;
@@ -254,6 +257,9 @@ function fetchAutenticado(
 }
 
 export default function Fornecedores() {
+  const {lojaAtiva,selecionarLoja}=useLoja();
+  const [consolidado,setConsolidado]=useState(true);
+  useDadosCompartilhados(()=>atualizarTela(true));
   const [
     fornecedores,
     setFornecedores,
@@ -331,14 +337,14 @@ export default function Fornecedores() {
   |--------------------------------------------------------------------------
   */
 
-  async function carregarFornecedores() {
+  async function carregarFornecedores(silencioso=false) {
     try {
-      setCarregando(true);
+      if(!silencioso)setCarregando(true);
       setErro('');
 
       const resposta =
         await fetchAutenticado(
-          `${API_URL}/fornecedores`
+          `${API_URL}/fornecedores${consolidado?'?consolidado=1':''}`
         );
 
       const dados =
@@ -369,7 +375,7 @@ export default function Fornecedores() {
     try {
       const resposta =
         await fetchAutenticado(
-          `${API_URL}/fornecedores/resumo`
+          `${API_URL}/fornecedores/resumo${consolidado?'?consolidado=1':''}`
         );
 
       const dados =
@@ -393,16 +399,16 @@ export default function Fornecedores() {
     }
   }
 
-  async function atualizarTela() {
+  async function atualizarTela(silencioso=false) {
     await Promise.all([
-      carregarFornecedores(),
+      carregarFornecedores(silencioso),
       carregarResumo(),
     ]);
   }
 
   useEffect(() => {
     atualizarTela();
-  }, []);
+  }, [consolidado,lojaAtiva?.id]);
 
   /*
   |--------------------------------------------------------------------------
@@ -449,6 +455,7 @@ export default function Fornecedores() {
   function editarFornecedor(
     fornecedor: Fornecedor
   ) {
+    if(fornecedor.loja_id&&fornecedor.loja_id!==lojaAtiva?.id){selecionarLoja(fornecedor.loja_id);return;}
     setFornecedorEditando(
       fornecedor.id
     );
@@ -761,6 +768,7 @@ export default function Fornecedores() {
   async function alterarStatus(
     fornecedor: Fornecedor
   ) {
+    if(fornecedor.loja_id&&fornecedor.loja_id!==lojaAtiva?.id){selecionarLoja(fornecedor.loja_id);return;}
     const estaAtivo =
       fornecedor.ativo === 1;
 
@@ -891,6 +899,7 @@ export default function Fornecedores() {
 
   return (
     <div className="fornecedores-page">
+      <div className="fornecedores-compartilhados" style={{padding:'12px 0'}}><strong>Cadastros compartilhados entre usuários</strong><p>{consolidado?'Exibindo as unidades autorizadas.':'Exibindo somente '+(lojaAtiva?.nome||'a unidade ativa')+'.'} Novos cadastros serão salvos em {lojaAtiva?.nome}. As listas se atualizam ao voltar à tela e a cada 30 segundos enquanto abertas.</p><label style={{display:'flex',alignItems:'center',gap:8}}><input style={{width:16,height:16}} type="checkbox" checked={consolidado} onChange={e=>setConsolidado(e.target.checked)}/>Ver fornecedores de todas as minhas unidades</label><button type="button" className="secondary-button" disabled={carregando} onClick={()=>void atualizarTela()}>Atualizar fornecedores</button></div>
       <div className="page-header">
         <div>
           <h1>Fornecedores</h1>
@@ -1783,6 +1792,7 @@ export default function Fornecedores() {
                               fornecedor
                                 .razao_social}
                           </strong>
+                          {fornecedor.loja_nome&&<small style={{display:'block',marginTop:5}}>Unidade: {fornecedor.loja_nome}</small>}
 
                           {fornecedor
                             .nome_fantasia && (
@@ -1901,7 +1911,7 @@ export default function Fornecedores() {
                             )
                           }
                         >
-                          Editar
+                          {fornecedor.loja_id&&fornecedor.loja_id!==lojaAtiva?.id?`Selecionar ${fornecedor.loja_nome||'unidade'}`:'Editar'}
                         </button>
 
                         <button

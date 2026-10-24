@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import { useEffect, useMemo, useState } from 'react';
 import Dialog from '../components/Dialog';
@@ -42,6 +43,8 @@ export default function HistoricoCaixas() {
   const [detalhe, setDetalhe] = useState<{ sessao: Sessao; resumo: Resumo } | null>(null);
   const [erroDetalhe, setErroDetalhe] = useState('');
   const [atualizacao, setAtualizacao] = useState(0);
+
+  useDadosCompartilhados(()=>setAtualizacao(n=>n+1));
 
   useEffect(() => {
     const controller = new AbortController();

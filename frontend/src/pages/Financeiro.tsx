@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch, sincronizarFechamentosFinanceiro } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import { useLoja } from '../contexts/LojaContext';
@@ -710,6 +711,8 @@ export default function Financeiro() {
   | INICIALIZAÇÃO
   |--------------------------------------------------------------------------
   */
+
+  useDadosCompartilhados(()=>recarregarDadosFinanceiros());
 
   useEffect(() => {
     carregarTudo();

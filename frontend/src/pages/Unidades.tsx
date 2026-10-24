@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -121,6 +122,8 @@ export default function Unidades() {
   const [executorIdentificado, setExecutorIdentificado] =
     useState<ExecutorIdentificado | null>(null);
   const [validandoExecutor, setValidandoExecutor] = useState(false);
+
+  useDadosCompartilhados(()=>carregarLojas());
 
   useEffect(() => {
     carregarLojas();

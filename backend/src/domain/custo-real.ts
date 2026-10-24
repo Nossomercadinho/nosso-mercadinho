@@ -108,3 +108,14 @@ export function compararCusto(anterior:Valor,novo:Valor,venda:Valor){
     precoVenda:dinheiro(v),margem:v.gt(0)?v.minus(n).div(v).times(100).toFixed(2):null,
     alertaMargem:v.gt(0) && (n.gte(v) || a.gt(0) && v.minus(a).div(v).minus(v.minus(n).div(v)).gte('0.05'))};
 }
+
+/** Manual cost entry: total already includes all costs the operator wishes to allocate. */
+export function calcularCustoSimples(valorTotal:Valor,quantidade:Valor){
+  const total=decimal(valorTotal,'valor total'),qtd=decimal(quantidade,'quantidade');
+  if(total.lte(0))throw new ErroCusto('Informe um valor total maior que zero.');
+  if(total.decimalPlaces()>2)throw new ErroCusto('O valor total deve ter no máximo duas casas decimais.');
+  if(qtd.lte(0))throw new ErroCusto('Informe uma quantidade maior que zero.');
+  const custo=total.div(qtd).toFixed(10);
+  if(decimal(custo).lte(0))throw new ErroCusto('Custo por unidade abaixo do limite de precisão.');
+  return {valorTotal:total.toFixed(2),quantidade:qtd.toString(),custoUnitario:custo};
+}

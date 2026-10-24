@@ -1,3 +1,5 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
+import TabelaCustosSimples from '../components/TabelaCustosSimples';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import Icon from '../components/Icon';
@@ -50,6 +52,7 @@ function fetchAutenticado(
 
 export default function Produtos() {
   const { lojaAtiva } = useLoja();
+  const [mostrarCustos,setMostrarCustos]=useState(false);
   const [catalogoGeral, setCatalogoGeral] = useState(false);
   const [produtos, setProdutos] =
     useState<ProdutoBanco[]>([]);
@@ -110,6 +113,8 @@ export default function Produtos() {
 
   const [categoriaFiltro, setCategoriaFiltro] =
     useState('');
+
+  useDadosCompartilhados(()=>Promise.all([carregarProdutos(),carregarProdutosLoja()]));
 
   useEffect(() => {
     carregarProdutos();
@@ -779,7 +784,7 @@ export default function Produtos() {
           </p>
         </div>
 
-        <div className="management-header-actions"><button type="button" className="secondary-button" onClick={() => { setCatalogoGeral((atual) => !atual); limparFiltros(); }}>{catalogoGeral ? 'Ver produtos' : 'Adicionar do catálogo'}</button><button
+        <div className="management-header-actions"><button type="button" className="secondary-button" onClick={()=>setMostrarCustos(v=>!v)}>{mostrarCustos?'Fechar tabela de custos':'Lançar custos'}</button><button type="button" className="secondary-button" onClick={() => { setCatalogoGeral((atual) => !atual); limparFiltros(); }}>{catalogoGeral ? 'Ver produtos' : 'Adicionar do catálogo'}</button><button
           type="button"
           className="primary-button"
           onClick={abrirNovoProduto}
@@ -789,6 +794,7 @@ export default function Produtos() {
         </div>
       </div>
 
+      {mostrarCustos&&<TabelaCustosSimples onSalvo={()=>{void carregarProdutosLoja();void carregarProdutos();}} />}
       {mensagem && (
         <div className="produto-mensagem-geral">
           {mensagem}

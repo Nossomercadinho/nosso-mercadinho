@@ -29,6 +29,16 @@ Despesas gerais são rateadas proporcionalmente ao valor líquido dos itens, em 
 
 O catálogo da unidade apresenta o **último custo de compra**. O **custo médio do estoque** é calculado separadamente a partir das entradas e saldos anteriores.
 
+## Tabela simples de custos manuais
+
+A tabela é a opção inicial em **Compras** e também está disponível em **Produtos → Lançar custos**. Não exige anexar documentos ou usar a calculadora detalhada.
+
+Localize o produto pelo nome ou EAN, informe seu valor total (já com os custos desejados e descontos descontados) e a quantidade na unidade de medida indicada. O custo calculado é `valor total / quantidade`. Para informar o custo diretamente, use quantidade 1. Quando o cadastro é por unidade, inclua as unidades dentro das caixas na quantidade informada. Valores aceitam vírgula decimal.
+
+O botão informa quantos produtos foram preenchidos, incluindo os de outras páginas/filtros. Apenas esses custos são enviados, até 100 por vez, em uma transação única. A API recalcula a divisão em decimal, exige quantidade e valor positivos, confere o último custo consultado e registra usuário, cálculo e valores anterior/novo no histórico. Se outro usuário alterar um custo durante a edição, o lote inteiro é recusado para conferência, preservando os valores digitados.
+
+Não movimenta estoque, não recalcula custo médio, não altera venda e não cria lançamentos financeiros. Gravar exige a permissão Produtos; a leitura do catálogo mantém as permissões atuais. A operação usa `/api/produtos/custos/simples` e não requer migration adicional.
+
 ## Calculadora
 
 **CALCULADORA DE CUSTO REAL** permite simular quantidades, impostos e despesas, copiar o resultado e sugerir um preço por margem bruta ou markup. A sugestão não altera a venda. Salvar o custo exige selecionar um produto da unidade, informar o motivo e confirmar; altera somente o último custo, sem movimentar estoque nem recalcular o custo médio.

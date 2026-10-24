@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import { useEffect, useRef, useState } from 'react';
 import { useLoja } from '../contexts/LojaContext';
@@ -46,6 +47,8 @@ export default function FechamentoDiario() {
   const dinheiroApurado = (centavos('final') - centavos('inicial') + centavos('retiradas')) / 100;
   const total = !matriz ? Number(form.outros || 0) : modoCaixa ? (centavos('final') - centavos('inicial') + centavos('retiradas') + centavos('itau') + centavos('pagbank')) / 100 : ['dinheiro','pix','debito','credito','aPrazo','outros']
     .reduce((s, k) => s + Number(form[k] || 0), 0);
+
+  useDadosCompartilhados(()=>carregarHistorico());
 
   useEffect(() => {
     sessionStorage.removeItem('nm-fechamento-data');

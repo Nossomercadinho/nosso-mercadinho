@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import Icon from '../components/Icon';
@@ -227,6 +228,8 @@ export default function Estoque({
   const [buscaHistorico, setBuscaHistorico] = useState('');
   const [tipoHistorico, setTipoHistorico] = useState('');
   const [usuarioHistorico, setUsuarioHistorico] = useState('');
+
+  useDadosCompartilhados(()=>Promise.all([carregarProdutos(),carregarEstoque()]));
 
   useEffect(() => {
     carregarLojas();

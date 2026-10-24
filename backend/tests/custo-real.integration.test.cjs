@@ -91,4 +91,43 @@ for(const modo of ['sqlite','postgres'])test(`custo real ${modo}: conferência, 
   const cat=(await req('/produtos/loja/catalogo')).produtos.find(p=>p.id===produto);assert.equal(cat.preco_custo,10);assert.equal(cat.preco_venda,14);assert.equal(cat.estoque,18);assert.ok(Math.abs(Number(cat.custo_medio)-5.8277777778)<1e-9);
   const hist=await req('/nfe/custos/historico');assert.ok(hist.historico.some(h=>h.origem==='CALCULADORA'&&h.usuario_id));
  });
+ await t.test('tabela simples salva vários custos por divisão, sem alterar preços ou saldos',async()=>{
+  const segundo=(await req('/produtos','POST',{ean:'7891234567891',nome:'Segundo produto de custo simples',precoVenda:7.5,precoCusto:2,estoqueInicial:5},201)).id;
+  const res=await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'40.00',quantidade:'10',custoAnteriorEsperado:'10'},{produtoId:segundo,valorTotal:'10.00',quantidade:'3',custoAnteriorEsperado:'2'}]});
+  assert.equal(res.atualizados,2);assert.equal(res.itens[0].custoUnitario,'4.0000000000');assert.equal(res.itens[1].custoUnitario,'3.3333333333');assert.equal(res.estoqueAlterado,false);assert.equal(res.precoVendaAlterado,false);
+  const cat=(await req('/produtos/loja/catalogo')).produtos;
+  assert.equal(cat.find(p=>p.id===produto).preco_venda,14);assert.equal(cat.find(p=>p.id===produto).estoque,18);
+  assert.equal(cat.find(p=>p.id===segundo).preco_venda,7.5);assert.equal(cat.find(p=>p.id===segundo).estoque,5);assert.equal(cat.find(p=>p.id===segundo).custo_medio,2);
+  const h=await sql("SELECT usuario_id,componentes_json FROM compras_custos_historico WHERE origem='TABELA_SIMPLES'");assert.equal(h.length,2);assert.ok(h.every(r=>r.usuario_id));assert.equal(JSON.parse(h[0].componentes_json).formula,'valorTotal / quantidade');
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'50',quantidade:'10',custoAnteriorEsperado:'4'},{produtoId:segundo,valorTotal:'10',quantidade:'3',custoAnteriorEsperado:'2'}]},409);
+  assert.equal((await req('/produtos/loja/catalogo')).produtos.find(p=>p.id===produto).preco_custo,4,'A falha da segunda linha não pode salvar a primeira');
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'50',quantidade:'0',custoAnteriorEsperado:'4'}]},400);
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'50',quantidade:'10'}]},400);
+  await req('/produtos/custos/simples','POST',{confirmado:false,itens:[{produtoId:produto,valorTotal:'50',quantidade:'10',custoAnteriorEsperado:'4'}]},400);
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'50',quantidade:'10',custoAnteriorEsperado:'4'},{produtoId:produto,valorTotal:'50',quantidade:'10',custoAnteriorEsperado:'4'}]},400);
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:segundo,valorTotal:'50',quantidade:'10',custoAnteriorEsperado:'4'}]},404,loja2);
+  const igual=await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'40',quantidade:'10',custoAnteriorEsperado:'4'}]});assert.equal(igual.atualizados,0);assert.equal((await sql("SELECT COUNT(*) AS n FROM compras_custos_historico WHERE origem='TABELA_SIMPLES'"))[0].n,2);
+  const papel=(await req('/usuarios/papeis','POST',{nome:'Consulta de compras simples',permissoes:['compras']},201)).papel;
+  await req('/usuarios','POST',{nome:'Somente Compras',email:'compras-simples@teste.local',senha,papelId:papel.id,lojaIds:[1]},201);
+  const restrito=(await req('/auth/login','POST',{email:'compras-simples@teste.local',senha})).token;
+  await req('/produtos/custos/simples','POST',{confirmado:true,itens:[{produtoId:produto,valorTotal:'40',quantidade:'10',custoAnteriorEsperado:'4'}]},403,1,restrito);
+ });
+
+ await t.test('fornecedores são compartilhados entre contas da mesma unidade e consolidado respeita acessos',async()=>{
+  const papel=(await req('/usuarios/papeis','POST',{nome:'Financeiro compartilhado',permissoes:['fornecedores','financeiro','contas']},201)).papel;
+  await req('/usuarios','POST',{nome:'Financeiro compartilhado',email:'financeiro-compartilhado@teste.local',senha,papelId:papel.id,lojaIds:[1]},201);
+  const financeiro=(await req('/auth/login','POST',{email:'financeiro-compartilhado@teste.local',senha})).token;
+  const criado=(await req('/fornecedores','POST',{razaoSocial:'Fornecedor compartilhado entre usuários'},201,1,financeiro)).fornecedor;
+  const admin=(await req('/fornecedores')).fornecedores;assert.ok(admin.some(f=>f.id===criado.id));
+  const mesmaUnidade=(await req('/fornecedores','GET',undefined,200,1,financeiro)).fornecedores;
+  assert.deepEqual(admin.map(f=>f.id).sort(),mesmaUnidade.map(f=>f.id).sort());
+  const outro=(await req('/fornecedores','POST',{razaoSocial:'Fornecedor exclusivo filial'},201,loja2)).fornecedor;
+  assert.ok(!(await req('/fornecedores','GET',undefined,200,loja2)).fornecedores.some(f=>f.id===criado.id));
+  const consolidado=(await req('/fornecedores?consolidado=1','GET',undefined,200,loja2)).fornecedores;
+  assert.ok(consolidado.some(f=>f.id===criado.id&&f.loja_id===1));assert.ok(consolidado.some(f=>f.id===outro.id&&f.loja_id===loja2));
+  const restrito=(await req('/fornecedores?consolidado=1','GET',undefined,200,1,financeiro)).fornecedores;
+  assert.ok(restrito.some(f=>f.id===criado.id));assert.ok(!restrito.some(f=>f.id===outro.id));
+  const resumo=(await req('/fornecedores/resumo?consolidado=1','GET',undefined,200,loja2)).resumo;assert.equal(resumo.totalFornecedores,consolidado.length);
+ });
+
 });

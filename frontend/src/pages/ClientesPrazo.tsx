@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import Dialog from '../components/Dialog';
 import { useLoja } from '../contexts/LojaContext';
@@ -106,6 +107,8 @@ export default function ClientesPrazo() {
   const [editandoLimite, setEditandoLimite] = useState(false);
   const [limiteCredito, setLimiteCredito] = useState('');
   const [salvandoLimite, setSalvandoLimite] = useState(false);
+
+  useDadosCompartilhados(()=>carregarClientes());
 
   useEffect(() => {
     carregarClientes('');

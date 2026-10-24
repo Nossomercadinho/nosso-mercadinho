@@ -194,6 +194,14 @@ O catálogo da unidade mostra `preco_custo` como último custo; o saldo ponderad
 
 PDFs textuais enviam `paginasPdf` com posições de texto para `ler-danfe-pdf.ts`; preservar colunas e páginas, sem reduzir DANFE tabular a uma linha simples. Cabeçalhos de continuação não substituem o quadro de totais. Número/série/CNPJ são obtidos da chave válida; `0 - ENTRADA` não é número fiscal. Fatores de embalagem podem vir de contagens explícitas na descrição, sempre com revisão. Reler documento já salvo não deve apagar a nova leitura na tela: atualizar o rascunho exige versão e justificativa, e entradas confirmadas são preservadas. PDFs reais de clientes e suas extrações ficam fora do Git; testes usam geometria e dados fictícios.
 
+### Custos simples e atualização compartilhada
+
+**Compras** prioriza `TabelaCustosSimples`; **Produtos → Lançar custos** usa o mesmo componente. `POST /api/produtos/custos/simples` exige Produtos, unidade ativa e confirmação explícita pelo botão. Recalcula total/quantidade em decimal, valida todos os itens e custos esperados antes de gravar o lote, e registra `TABELA_SIMPLES` no histórico existente. Não altera estoque, custo médio ou venda. Não requer novas tabelas/migration.
+
+Fornecedores oferece `?consolidado=1` somente nos GETs da lista e do resumo. Essa consulta ignora o filtro operacional ativo, mas mantém todas as restrições de unidades autorizadas, como o consolidado financeiro. Cada fornecedor informa a unidade de origem; editar/ativar/desativar continua limitado à unidade ativa. A visão consolidada escolhe um vínculo ativo autorizado quando disponível e não duplica fornecedores.
+
+`apiClient` notifica alterações concluídas entre abas sem enviar dados comerciais ou credenciais. `useDadosCompartilhados` atualiza listas ao receber notificação, ganhar foco e a cada 30 segundos com a página visível; sessões em dispositivos diferentes usam essa consulta periódica autenticada. Não substituir formulários em edição por snapshots automáticos. A tabela de custos mantém o snapshot enquanto houver valores digitados e exige revisão em caso de concorrência. Não disparar notificações para POSTs auxiliares de leitura ou de sincronização de fechamentos, evitando ciclos de atualização.
+
 ## 7. Desenvolvimento local
 
 Usar **Node.js 22.x**, com versão compatível com o Vite do projeto (22.12 ou superior). As dependências têm lockfiles separados; a raiz não é um workspace npm.

@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch, sincronizarFechamentosFinanceiro } from '../services/apiClient';
 import {
   useEffect,
@@ -143,6 +144,8 @@ export default function Dashboard({
   const resumoVersion = useRef(0);
   const [unidadeResumoId, setUnidadeResumoId] = useState('');
   const lojasResumoIds = lojas.map(loja => loja.id).join(',');
+
+  useDadosCompartilhados(()=>{if(paginaAtiva==='Visão Geral')return carregarResumoFinanceiro();});
 
   useEffect(() => {
     let disposed = false;

@@ -1,3 +1,5 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
+import TabelaCustosSimples from '../components/TabelaCustosSimples';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import CustoRealCompras from '../components/CustoRealCompras';
@@ -408,6 +410,8 @@ export default function Compras() {
   |--------------------------------------------------------------------------
   */
 
+  useDadosCompartilhados(()=>Promise.all([carregarProdutos(),carregarFornecedores(),carregarNotas()]));
+
   useEffect(() => {
     carregarInicial();
   }, []);
@@ -645,6 +649,7 @@ export default function Compras() {
     setNotaAbertaId(null);
 
     setMostrandoImportacao(false);
+    const painel=document.querySelector<HTMLDetailsElement>('.compra-leitura-assistida');if(painel)painel.open=true;
     window.dispatchEvent(new Event('nm:importar-nota'));
     void carregarLocais(idLojaAtiva);
   }
@@ -1725,25 +1730,24 @@ export default function Compras() {
           <h1>Compras</h1>
 
           <p>
-            Importe NF-e,
-            confira produtos e
-            acompanhe as entradas
-            de mercadoria.
+            Lance custos manualmente e acompanhe as entradas de mercadoria.
           </p>
         </div>
 
         <button
           type="button"
-          className="primary-button"
+          className="secondary-button"
           onClick={
             abrirImportacao
           }
         >
-          IMPORTAR NOTA FISCAL
+          Importar nota (leitura assistida)
         </button>
       </div>
 
-      <CustoRealCompras onConfirmada={async (id) => { await Promise.all([carregarNotas(),carregarProdutos()]); await abrirNota(id); }}/>
+      <TabelaCustosSimples onSalvo={()=>{void carregarProdutos();}} />
+      <details className="compra-leitura-assistida"><summary>Importação assistida de notas e calculadora detalhada</summary>
+      <CustoRealCompras onConfirmada={async (id) => { await Promise.all([carregarNotas(),carregarProdutos()]); await abrirNota(id); }}/></details>
 
       {mensagem && (
         <div className="success-message">

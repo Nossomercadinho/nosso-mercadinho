@@ -1,3 +1,4 @@
+import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch } from '../services/apiClient';
 import Dialog from "../components/Dialog";
 import ResponsiveFilters from "../components/ResponsiveFilters";
@@ -94,6 +95,8 @@ export default function Vendas() {
   const [formaEdicao, setFormaEdicao] = useState("");
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
+
+  useDadosCompartilhados(()=>carregar());
 
   useEffect(() => {
     carregar();

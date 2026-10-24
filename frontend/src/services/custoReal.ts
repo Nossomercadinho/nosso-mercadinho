@@ -1,4 +1,4 @@
-export {calcularCustoReal,compararCusto,decimal,ratear} from '../generated/custo-real';
+export {calcularCustoSimples,calcularCustoReal,compararCusto,decimal,ratear} from '../generated/custo-real';
 export type {ConferenciaCusto,ItemCusto,Tributo} from '../generated/custo-real';
 import type {ConferenciaCusto,ItemCusto,Tributo} from '../generated/custo-real';
 export const impostoVazio=():Tributo=>({valor:'0',cobrado:false,incluido:false});

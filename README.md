@@ -74,3 +74,9 @@ Para executar a configuração com outro agente que já possui os acessos do Sup
 ## Importação de notas e custo unitário
 
 Compras aceita fotos, PDF e XML para calcular o custo real por unidade, incluindo os impostos e despesas efetivamente cobrados. A conferência mostra produtos, embalagens e totais antes da confirmação. Confirmar recebe o estoque e atualiza custos com histórico, preservando preços de venda. Há calculadora independente com simulação de margem/markup. Consulte [o guia de importação e validação](docs/IMPORTACAO-NOTAS-CUSTO.md).
+
+## Custos manuais e dados compartilhados
+
+Em **Compras** há uma tabela simples de custos; em **Produtos**, use **Lançar custos**. Informe o valor total e a quantidade e confira o custo unitário calculado. Salvar atualiza somente os custos preenchidos na unidade ativa, com histórico, sem alterar preço de venda, estoque ou custo médio. Quantidade 1 permite informar diretamente o custo unitário.
+
+Fornecedores mostra, por padrão, as unidades autorizadas e identifica a unidade de cada cadastro. As telas de gestão atualizam listas ao receber alterações em outras abas, ao voltar à janela e a cada 30 segundos enquanto visíveis. Usuários de sessões/dispositivos distintos consultam os mesmos dados do backend, respeitando permissões e vínculos de unidade.

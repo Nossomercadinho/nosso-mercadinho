@@ -77,13 +77,15 @@ async function validarProduto(id: number, lojaId = lojaCadastroAtual()) {
 }
 export async function listarFornecedores(busca?: string, somenteAtivos = false) {
     await garantirVinculosCadastros();
-    const rows = await all(`SELECT f.*,fl.ativo AS vinculoAtivo,fl.dados_json,
+    const rows = await all(`SELECT f.*,fl.ativo AS vinculoAtivo,fl.dados_json,fl.loja_id,
+    (SELECT nome FROM lojas WHERE id=fl.loja_id) AS loja_nome,
     (SELECT COUNT(*) FROM fornecedor_produtos_lojas fp WHERE fp.fornecedor_id=f.id AND ${escopoLojaSql('fp.loja_id')}) AS total_produtos,
     (SELECT COUNT(*) FROM fornecedor_precos_historico h WHERE h.fornecedor_id=f.id AND ${escopoLojaSql('h.loja_id')}) AS total_compras_registradas
     FROM fornecedores f JOIN fornecedores_lojas fl ON fl.fornecedor_id=f.id
     WHERE ${escopoLojaSql('fl.loja_id')}
-      AND fl.loja_id=(SELECT MIN(fl_preferido.loja_id) FROM fornecedores_lojas fl_preferido
-        WHERE fl_preferido.fornecedor_id=f.id AND ${escopoLojaSql('fl_preferido.loja_id')})
+      AND fl.loja_id=(SELECT fl_preferido.loja_id FROM fornecedores_lojas fl_preferido
+        WHERE fl_preferido.fornecedor_id=f.id AND ${escopoLojaSql('fl_preferido.loja_id')}
+        ORDER BY CASE WHEN fl_preferido.ativo=1 THEN 0 ELSE 1 END,fl_preferido.loja_id LIMIT 1)
     ORDER BY f.razao_social COLLATE NOCASE`);
     const termo = String(busca || '').trim().toLocaleLowerCase('pt-BR');
     return rows.map(publico).filter(f => (!somenteAtivos || Number(f.ativo) === 1) && (!termo || [f.nome_fantasia, f.razao_social, f.cpf_cnpj, f.telefone, f.whatsapp, f.email, f.cidade].some(v => String(v || '').toLocaleLowerCase('pt-BR').includes(termo))));

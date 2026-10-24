@@ -1,3 +1,13 @@
+const EVENTO_DADOS='nm:dados-atualizados';
+const canalDados=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('nm-dados-compartilhados'):null;
+if(canalDados)canalDados.onmessage=()=>window.dispatchEvent(new Event(EVENTO_DADOS));
+else if(typeof window!=='undefined')window.addEventListener('storage',e=>{if(e.key==='nm-dados-compartilhados')window.dispatchEvent(new Event(EVENTO_DADOS));});
+function avisarAlteracao(){
+  window.dispatchEvent(new Event(EVENTO_DADOS));
+  if(canalDados)canalDados.postMessage({alterado:true});
+  else try{localStorage.setItem('nm-dados-compartilhados',String(Date.now()));}catch{/* Polling e foco continuam disponíveis. */}
+}
+
 export const LOJA_ATIVA_KEY = 'nm-loja-ativa';
 let lojaContextId: string | null = null;
 export function definirLojaDaAba(id: number | null) { lojaContextId = id == null ? null : String(id); }
@@ -12,7 +22,12 @@ export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
     const loja = lojaContextId;
     if (loja && /^\d+$/.test(loja) && !headers.has('X-Loja-Id')) headers.set('X-Loja-Id', loja);
   }
-  return fetch(input, { ...init, headers });
+  return fetch(input, { ...init, headers }).then(response=>{
+    const metodo=String(init.method||(input instanceof Request?input.method:'GET')).toUpperCase();
+    const leituraAuxiliar=/\/financeiro\/sincronizar-fechamentos$|\/nfe\/custos\/(?:ler|conferir|chave)$/.test(path);
+    if(response.ok&&!['GET','HEAD','OPTIONS'].includes(metodo)&&/^\/api\/(?:produtos|estoque|financeiro|nfe|clientes-prazo|fornecedores|fechamento-diario|vendas|lojas)(?:\/|$)/.test(path)&&!leituraAuxiliar)avisarAlteracao();
+    return response;
+  });
 }
 
 /** Reconciles existing daily closings without creating duplicate receipts. */
