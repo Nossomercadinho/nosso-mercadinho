@@ -19,15 +19,15 @@ DECLARE
     'financeiro_lancamentos', 'financeiro_baixas', 'financeiro_fechamentos_caixa',
     'financeiro_historico', 'usuario_lojas', 'vendas', 'contas_receber',
     'contas_receber_recebimentos', 'venda_itens', 'venda_pagamentos',
-    'vendas_caixa_diario', 'vendas_correcoes'
+    'vendas_caixa_diario', 'vendas_correcoes', 'compras_conferencias', 'compras_documentos', 'compras_embalagens', 'compras_custos_historico'
   ];
 BEGIN
-  IF (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name=ANY(app_tables)) <> 431 THEN
-    RAISE EXCEPTION 'Expected 431 application columns. Compare the schema contract before deployment.';
+  IF (SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name=ANY(app_tables)) <> 474 THEN
+    RAISE EXCEPTION 'Expected 474 application columns. Compare the schema contract before deployment.';
   END IF;
   IF (SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
-      WHERE n.nspname='public' AND c.contype='f' AND t.relname=ANY(app_tables)) <> 90 THEN
-    RAISE EXCEPTION 'Expected 90 application foreign keys.';
+      WHERE n.nspname='public' AND c.contype='f' AND t.relname=ANY(app_tables)) <> 104 THEN
+    RAISE EXCEPTION 'Expected 104 application foreign keys.';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
       WHERE n.nspname='public' AND t.relname=ANY(app_tables) AND c.contype='f' AND (NOT c.condeferrable OR NOT c.condeferred)) THEN
@@ -61,7 +61,7 @@ BEGIN
       END LOOP;
     END IF;
   END LOOP;
-  RAISE NOTICE 'Schema contract, 90 foreign keys, RLS and backend-only grants verified.';
+  RAISE NOTICE 'Schema contract, 104 foreign keys, RLS and backend-only grants verified.';
 END
 $checks$;
 

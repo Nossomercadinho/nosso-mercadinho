@@ -103,6 +103,20 @@ export async function buscarFornecedorPorCpfCnpj(cpfCnpj: string) {
     const row = await get(`SELECT f.*,fl.ativo AS vinculoAtivo,fl.dados_json FROM fornecedores f JOIN fornecedores_lojas fl ON fl.fornecedor_id=f.id WHERE f.cpf_cnpj=? AND ${escopoLojaSql('fl.loja_id')} LIMIT 1`, [doc]);
     return row ? publico(row) : null;
 }
+/** Name-only beneficiaries must never match a supplier from another store. */
+export async function buscarBeneficiarioPorNome(nome: string, lojaId: number) {
+    const normalizar = (valor: unknown) => String(valor || '').normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+    const termo = normalizar(nome);
+    const rows = await all(`SELECT f.*,fl.ativo AS vinculoAtivo,fl.dados_json
+        FROM fornecedores f JOIN fornecedores_lojas fl ON fl.fornecedor_id=f.id WHERE fl.loja_id=?`, [lojaId]);
+    const encontrados = rows.map(publico).filter(f =>
+        [f.razao_social, f.nome_fantasia].some(n => normalizar(n) === termo));
+    if (encontrados.length > 1) throw new Error('Há mais de um fornecedor com este nome. Selecione o beneficiário na pesquisa.');
+    const fornecedor = encontrados[0];
+    if (fornecedor && Number(fornecedor.ativo) !== 1) throw new Error('Este fornecedor está inativo no mercado. Revise seu cadastro antes de salvar o boleto.');
+    return fornecedor;
+}
 async function criarFornecedorImpl(body: FornecedorPayload) {
     await garantirVinculosCadastros();
     const lojaId = lojaCadastroAtual(body.lojaId);

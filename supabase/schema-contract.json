@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "schema": "public",
   "dateStorage": "text",
   "numberStorage": "numeric",
@@ -3724,6 +3724,366 @@
           "onDelete": "NO ACTION",
           "onUpdate": "NO ACTION",
           "deferrable": true
+        }
+      ]
+    },
+    {
+      "name": "compras_conferencias",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "local_estoque_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_criacao_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "usuario_confirmacao_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nota_entrada_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "identificador",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "origem",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'RASCUNHO'"
+        },
+        {
+          "name": "versao",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "estado_json",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "original_json",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "confirmado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "local_estoque_id",
+          "table": "locais_estoque",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "usuario_criacao_id",
+          "table": "usuarios",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "usuario_confirmacao_id",
+          "table": "usuarios",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "nota_entrada_id",
+          "table": "notas_entrada",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "name": "compras_documentos",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "conferencia_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "mime",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "sha256",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "conteudo_base64",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "conferencia_id",
+          "table": "compras_conferencias",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "name": "compras_embalagens",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "codigo_fornecedor",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "unidades_embalagem",
+          "type": "numeric",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    {
+      "name": "compras_custos_historico",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "produto_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fornecedor_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "conferencia_id",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "usuario_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "origem",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "custo_anterior",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "custo_novo",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "quantidade",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "componentes_json",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "justificativa",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "criado_em",
+          "type": "text",
+          "nullable": true,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "produto_id",
+          "table": "produtos",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "fornecedor_id",
+          "table": "fornecedores",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "conferencia_id",
+          "table": "compras_conferencias",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "usuario_id",
+          "table": "usuarios",
+          "referencedColumn": "id"
         }
       ]
     }

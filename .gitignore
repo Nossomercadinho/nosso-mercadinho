@@ -1,7 +1,7 @@
 # Dependências
-node_modules/
-backend/node_modules/
-frontend/node_modules/
+node_modules
+backend/node_modules
+frontend/node_modules
 
 # Banco de dados local - NÃO enviar ao Git
 .local/
@@ -48,3 +48,7 @@ Desktop.ini
 *.tmp
 *.temp
 ~$*
+
+# Assets locais gerados para OCR e PDF
+frontend/public/ocr/
+frontend/src/generated/

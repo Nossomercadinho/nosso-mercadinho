@@ -70,3 +70,7 @@ O [guia de operação e migração](docs/SUPABASE.md) cobre dois caminhos:
 Ative com `DB_CLIENT=postgres`, `DATABASE_URL` privada e TLS verificado somente após preparar e conferir o destino. `DATABASE_URL` sozinha não troca o banco. O frontend continua usando `/api`, e o login e as permissões continuam na API Express. Hospedagem, credenciais remotas e o corte de produção dependem do ambiente de destino.
 
 Para executar a configuração com outro agente que já possui os acessos do Supabase, use o [prompt de execução](docs/PROMPT-SUPABASE.txt).
+
+## Importação de notas e custo unitário
+
+Compras aceita fotos, PDF e XML para calcular o custo real por unidade, incluindo os impostos e despesas efetivamente cobrados. A conferência mostra produtos, embalagens e totais antes da confirmação. Confirmar recebe o estoque e atualiza custos com histórico, preservando preços de venda. Há calculadora independente com simulação de margem/markup. Consulte [o guia de importação e validação](docs/IMPORTACAO-NOTAS-CUSTO.md).

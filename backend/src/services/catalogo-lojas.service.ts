@@ -69,8 +69,9 @@ export async function listarCatalogoLoja(lojaId: number) {
   return all(`SELECT p.*, CASE WHEN pl.precos_personalizados=1 OR pl.preco_venda<>0 THEN pl.preco_venda ELSE p.preco_venda END AS preco_venda, pl.estoque_minimo AS estoque_minimo,
     COALESCE((SELECT SUM(es.quantidade) FROM estoque_saldos es WHERE es.produto_id=p.id AND es.loja_id=pl.loja_id),0) AS estoque,
     COALESCE((SELECT SUM(es.quantidade) FROM estoque_saldos es WHERE es.produto_id=p.id AND es.loja_id=pl.loja_id),0) AS quantidade,
-    COALESCE(NULLIF((SELECT CASE WHEN SUM(es.quantidade)>0 THEN SUM(es.quantidade*es.custo_medio)/SUM(es.quantidade) ELSE AVG(es.custo_medio) END
-      FROM estoque_saldos es WHERE es.produto_id=p.id AND es.loja_id=pl.loja_id),0),pl.preco_custo,p.preco_custo,0) AS preco_custo,
+    COALESCE(pl.preco_custo,p.preco_custo,0) AS preco_custo,
+    COALESCE((SELECT CASE WHEN SUM(es.quantidade)>0 THEN SUM(es.quantidade*es.custo_medio)/SUM(es.quantidade) ELSE AVG(es.custo_medio) END
+      FROM estoque_saldos es WHERE es.produto_id=p.id AND es.loja_id=pl.loja_id),0) AS custo_medio,
     pl.loja_id FROM produtos p JOIN produtos_lojas pl ON pl.produto_id=p.id
     WHERE pl.loja_id=? AND pl.ativo=1 AND p.ativo=1 ORDER BY p.nome COLLATE NOCASE`, [lojaId]);
 }

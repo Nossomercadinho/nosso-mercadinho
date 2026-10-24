@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   permitirPerfis,
 } from '../middleware/auth.middleware';
+import custoRealRoutes from './custo-real.routes';
 import {
   buscarNotaEntradaPorId,
   efetivarNotaEntrada,
@@ -12,6 +13,7 @@ import {
 } from '../services/nfe.service';
 
 const router = Router();
+router.use('/custos',custoRealRoutes);
 
 /*
 |--------------------------------------------------------------------------

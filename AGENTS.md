@@ -113,7 +113,7 @@ Preservar o `JWT_SECRET` nas alterações normais; trocá-lo invalida sessões e
 
 `backend/src/database/database.ts` seleciona o adaptador por `DB_CLIENT`. O padrão local é `sqlite`; **definir apenas `DATABASE_URL` não seleciona PostgreSQL**. Na produção, o gateway exige PostgreSQL explicitamente.
 
-- Estrutura de referência: 38 tabelas em `public`, 431 colunas e 90 chaves estrangeiras.
+- Estrutura base: 38 tabelas em `public`, 431 colunas e 90 chaves estrangeiras. A migration de custo real `20261022000100` acrescenta quatro tabelas privadas; o contrato do código passa a 42 tabelas, 474 colunas e 104 chaves estrangeiras.
 - Migrations iniciais: `20261015000100_schema_inicial.sql` e `20261015000200_backend_only.sql`, já aplicadas no projeto configurado.
 - As 27 tabelas da estrutura anterior foram preservadas em `legacy_20261019`. Não apagar esse schema ou confundi-lo com as tabelas atuais.
 - O papel da API é proprietário das tabelas da aplicação, sem SUPERUSER, CREATEDB, CREATEROLE ou BYPASSRLS e sem CREATE no schema. Não substituir a conexão por um administrador do banco como solução rotineira.
@@ -183,6 +183,14 @@ Cada fechamento não zerado gera uma entrada RECEBIDO e uma baixa na data de ref
 `POST /api/financeiro/sincronizar-fechamentos` reconcilia os registros antigos apenas na unidade ativa/autorizada. Financeiro e Visão Geral chamam essa operação antes de carregar valores. A sincronização relê o fechamento dentro da transação para não aplicar um snapshot desatualizado. Registros zerados não criam entradas novas. Fechamentos legados com documento equivalente `FECHAMENTO-{data}-{loja}` são preservados; valores diferentes são retornados como conflitos para conferência.
 O resumo ainda inclui o total de fechamentos não integrados, mas exclui os que já têm documento financeiro equivalente (legado ou integrado), evitando duplicação durante a reconciliação. O botão do Financeiro abre o módulo atualizado quando o usuário tem a permissão `fechamento`.
 A Visão Geral inicia em Todas as unidades. Seu seletor de resumo é independente da loja operacional. `GET /api/financeiro/resumo?consolidado=1` ignora apenas a restrição à loja ativa, preservando integralmente as lojas autorizadas do usuário; `lojaId` opcional filtra uma unidade autorizada. Escritas continuam exigindo a unidade ativa explícita. Entradas/saídas do mês são recebimentos/pagamentos realizados; contas pendentes permanecem nos indicadores próprios.
+
+### Importação de notas com custo real
+
+Ver `docs/IMPORTACAO-NOTAS-CUSTO.md`. O fluxo de Compras aceita foto, PDF e XML com conferência, reconciliação e confirmação explícita. Apenas a confirmação recebe estoque no local da unidade ativa e atualiza o último custo; preserva os preços de venda. Rascunhos e leitura não alteram dados comerciais. A calculadora manual salva apenas o último custo com motivo, sem alterar estoque ou custo médio.
+
+As quatro novas tabelas são privadas, com RLS e propriedade do papel do backend. A migration aditiva `20261022000100` foi aplicada no projeto configurado em 24/10/2026, registrada no histórico, sem seed/reset; a conferência antes/depois preservou os dados das 38 tabelas comerciais existentes. Em outro destino, aplicar a migration antes do código dependente. Arquivos são servidos somente pela API autenticada da loja. A chave não substitui uma integração fiscal autorizada. Não usar `nota-foto.service.ts` ou o fluxo antigo de sugestão de preço; eles não fazem parte desta entrega.
+
+O catálogo da unidade mostra `preco_custo` como último custo; o saldo ponderado é retornado separadamente em `custo_medio`. Não sobrescrever o preço de venda na importação. O motor decimal canônico é `backend/src/domain/custo-real.ts`; o prebuild copia uma versão para `frontend/src/generated`, permitindo builds independentes dos serviços.
 
 ## 7. Desenvolvimento local
 

@@ -5,8 +5,8 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '../..');
 const contract = JSON.parse(fs.readFileSync(path.join(root, 'supabase/schema-contract.json'), 'utf8'));
-const baseline = fs.readFileSync(path.join(root, 'supabase/migrations/20261015000100_schema_inicial.sql'), 'utf8');
-const security = fs.readFileSync(path.join(root, 'supabase/migrations/20261015000200_backend_only.sql'), 'utf8');
+const baseline = fs.readdirSync(path.join(root, 'supabase/migrations')).filter(f=>f.endsWith('.sql')).sort().map(f=>fs.readFileSync(path.join(root,'supabase/migrations',f),'utf8')).join('\n');
+const security = baseline;
 const seed = fs.readFileSync(path.join(root, 'supabase/seed.sql'), 'utf8');
 const config = fs.readFileSync(path.join(root, 'supabase/config.toml'), 'utf8');
 
@@ -28,7 +28,7 @@ test('contrato PostgreSQL contém as tabelas e colunas criadas pelo runtime SQLi
   const files = [
     'src/database/sqlite.ts', 'src/services/acessos.service.ts',
     'src/services/caixas.service.ts', 'src/services/catalogo-lojas.service.ts',
-    'src/services/cadastros-lojas.service.ts', 'src/services/clientes-prazo.service.ts',
+    'src/services/cadastros-lojas.service.ts', 'src/services/compras-schema.service.ts', 'src/services/clientes-prazo.service.ts',
     'src/services/fechamento-diario.service.ts', 'src/services/financeiro.service.ts',
     'src/services/vendas.service.ts', 'src/services/nfe.service.ts',
     'src/routes/vendas-gestao.routes.ts',
@@ -59,9 +59,9 @@ test('contrato PostgreSQL contém as tabelas e colunas criadas pelo runtime SQLi
 });
 
 test('schema preserva identidades, códigos, flags e isolamento da Data API', () => {
-  assert.equal(contract.tables.length, 38);
-  assert.equal(contract.tables.reduce((n, t) => n + t.columns.length, 0), 431);
-  assert.equal(contract.tables.reduce((n, t) => n + t.foreignKeys.length, 0), 90);
+  assert.equal(contract.tables.length, 42);
+  assert.equal(contract.tables.reduce((n, t) => n + t.columns.length, 0), 474);
+  assert.equal(contract.tables.reduce((n, t) => n + t.foreignKeys.length, 0), 104);
   const created = new Set();
   for (const table of contract.tables) {
     assert.ok(baseline.includes(`CREATE TABLE IF NOT EXISTS public."${table.name}"`));
@@ -75,7 +75,7 @@ test('schema preserva identidades, códigos, flags e isolamento da Data API', ()
       if (/^(ean|cpf|cpf_cnpj|cnpj|cep|ncm|cest|xml)$|_json$|_em$|^data_/.test(column.name)) assert.equal(column.type, 'text', `${table.name}.${column.name} perderia sua representação original.`);
     }
   }
-  assert.equal((baseline.match(/DEFERRABLE INITIALLY DEFERRED/g) || []).length, 90);
+  assert.equal((baseline.match(/DEFERRABLE INITIALLY DEFERRED/g) || []).length, 104);
   assert.match(security, /ENABLE ROW LEVEL SECURITY/);
   assert.match(security, /REVOKE ALL PRIVILEGES ON TABLE public\.%I FROM PUBLIC/);
   assert.match(security, /'anon', 'authenticated', 'service_role'/);

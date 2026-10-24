@@ -1,5 +1,6 @@
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
+import CustoRealCompras from '../components/CustoRealCompras';
 import { useLoja } from '../contexts/LojaContext';
 import {
     useEffect,
@@ -643,9 +644,8 @@ export default function Compras() {
     setNotaCompleta(null);
     setNotaAbertaId(null);
 
-    setMostrandoImportacao(
-      true
-    );
+    setMostrandoImportacao(false);
+    window.dispatchEvent(new Event('nm:importar-nota'));
     void carregarLocais(idLojaAtiva);
   }
 
@@ -1739,9 +1739,11 @@ export default function Compras() {
             abrirImportacao
           }
         >
-          + Importar NF-e XML
+          IMPORTAR NOTA FISCAL
         </button>
       </div>
+
+      <CustoRealCompras onConfirmada={async (id) => { await Promise.all([carregarNotas(),carregarProdutos()]); await abrirNota(id); }}/>
 
       {mensagem && (
         <div className="success-message">
@@ -2088,11 +2090,11 @@ export default function Compras() {
           <div className="compra-conferencia-header">
             <div>
               <span className="compra-etapa">
-                Conferência da NF-e
+                {String(conferencia.nota.chaveNfe || '').startsWith('CONFERENCIA:') ? 'Conferência da entrada' : 'Conferência da NF-e'}
               </span>
 
               <h2>
-                NF-e nº{' '}
+                {String(conferencia.nota.chaveNfe || '').startsWith('CONFERENCIA:') ? 'Entrada conferida nº ' : 'NF-e nº '}
                 {conferencia.nota
                   .numeroNota ||
                   '-'}
@@ -2990,11 +2992,7 @@ export default function Compras() {
                             '-'}
                         </strong>
 
-                        <span>
-                          Série{' '}
-                          {nota.serie ||
-                            '-'}
-                        </span>
+                        <span>{nota.chave_nfe.startsWith('CONFERENCIA:') ? 'Entrada conferida — sem XML' : `Série ${nota.serie || '-'}`}</span>
                       </div>
                     </td>
 
