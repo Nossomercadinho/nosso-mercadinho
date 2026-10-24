@@ -11,6 +11,16 @@ Em **Compras → IMPORTAR NOTA FISCAL**, use **Tirar foto** no celular ou **Sele
 
 Apenas ler o arquivo ou salvar a conferência não altera produtos, custos, fornecedores ou estoque. A chave e o arquivo protegem contra repetição; uma confirmação repetida da mesma conferência não recebe a mercadoria novamente. Notas sem chave também são verificadas por fornecedor, número e série antes da entrada. Fotos diferentes da mesma nota devem ser conferidas no histórico.
 
+## Leitura de DANFE em PDF
+
+PDFs com texto preservam a posição das colunas de todas as páginas. O leitor identifica a tabela por seus títulos (código, descrição, NCM, CFOP, quantidade, valor unitário, total, ICMS e IPI), reúne descrições quebradas e lê o quadro de impostos separadamente. Cabeçalhos de continuação não substituem os totais da primeira página. ICMS próprio e tributos aproximados não são adicionados ao custo.
+
+Quando a chave é válida, CNPJ do emitente, número e série são extraídos dela; o campo `0 - ENTRADA` do DANFE não é interpretado como número da nota. A data de emissão e o nome do emitente vêm dos campos do documento. Quantidades explícitas como `CX C/18 UND` e suas continuações são aproveitadas como fator sugerido, ainda sujeito à conferência. Medidas como `2L` e `105GR` não são contagens de unidades.
+
+Se houver linhas ou páginas ilegíveis, a soma lida é comparada ao total impresso e a divergência é sinalizada. Documentos sem tabela reconhecida mantêm a leitura assistida simples. Fotos e PDFs escaneados continuam sujeitos à precisão do OCR.
+
+Após uma atualização do leitor, selecione o PDF novamente para refazer a leitura. Se o documento já tiver um rascunho, a nova leitura é mantida na tela e a substituição exige salvar novamente com justificativa; uma entrada já confirmada não é regravada.
+
 ## Cálculo
 
 Para o regime considerado (Simples Nacional), o custo soma produtos, frete, seguro, despesas e IPI/ICMS-ST/FCP-ST efetivamente cobrados e ainda não incluídos, descontando os abatimentos. Não adiciona ICMS próprio embutido, tributos retidos em etapas anteriores, DAS futuro da venda ou créditos fiscais presumidos. Os valores de notas específicas devem ser conferidos com o documento e a orientação fiscal da empresa.

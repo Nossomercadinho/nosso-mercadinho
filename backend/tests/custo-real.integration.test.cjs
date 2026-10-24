@@ -38,7 +38,7 @@ for(const modo of ['sqlite','postgres'])test(`custo real ${modo}: conferência, 
  await t.test('rascunho é privado, idempotente e não muda custos, preços nem estoque',async()=>{
   const inicial=exemplo();inicial.fornecedorCnpj='12345678000199';inicial.itens[0].codigoFornecedor='A1';inicial.itens[0].salvarEmbalagem=true;
   draft=await req('/nfe/custos/rascunhos','POST',{estado:inicial,documentos:[doc]});assert.ok(draft.id);
-  const repeat=await req('/nfe/custos/rascunhos','POST',{estado:exemplo(),documentos:[doc]});assert.equal(repeat.id,draft.id);
+  const repeat=await req('/nfe/custos/rascunhos','POST',{estado:exemplo(),documentos:[doc]});assert.equal(repeat.id,draft.id);assert.equal(repeat.documentoJaRegistrado,true);
   const aberto=await req('/nfe/custos/rascunhos/'+draft.id);assert.equal(aberto.documentos.length,1);assert.equal(aberto.documentos[0].base64,undefined);
   await req('/nfe/custos/rascunhos/'+draft.id,'GET',undefined,404,loja2);
   const id=aberto.documentos[0].id;const download=await fetch(base+'/nfe/custos/documentos/'+id,{headers:{Authorization:'Bearer '+token,'X-Loja-Id':'1'}});assert.equal(download.status,200);assert.equal(download.headers.get('x-content-type-options'),'nosniff');assert.match(download.headers.get('content-disposition'),/attachment/);assert.equal(await download.text(),Buffer.from(doc.base64,'base64').toString());

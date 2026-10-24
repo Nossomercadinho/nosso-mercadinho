@@ -53,9 +53,14 @@ export function lerTextoConferencia(texto:string,origem:'FOTO'|'PDF'):Conferenci
   const capturar=(regex:RegExp)=>{const m=texto.match(regex);return m?numeroBR(m[1]):null;};
   dados.fornecedorCnpj=(texto.match(/CNPJ\s*[:\s]*([\d./-]{14,18})/i)?.[1]||'').replace(/\D/g,'');
   dados.fornecedorNome=texto.match(/(?:RAZ[AÃ]O SOCIAL|FORNECEDOR|EMITENTE)\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim()||'';
-  dados.numero=texto.match(/(?:NOTA|NF-?E)\s*(?:N[ºO°.]*)?\s*[:\s]+(\d+)/i)?.[1]||'';
+  dados.numero=(texto.match(/(?:NOTA|NF-?E)[ \t]*(?:N[ºO°.]*)?[ \t]*[: \t]+([\d.]+)/i)?.[1]||texto.match(/N[º°][ \t]*[:.]?[ \t]*([\d.]+)/i)?.[1]||'').replace(/\./g,'').replace(/^0+(?=\d)/,'');
   dados.serie=texto.match(/S[EÉ]RIE\s*[:\s]+(\d+)/i)?.[1]||'';
   const chave=texto.match(/(?:\d{4}\s*){11}/)?.[0];if(chave){try{dados.chave=validarChaveNfe(chave);}catch{/* Mark unclear instead of inventing a key. */}}
+  if(dados.chave){dados.fornecedorCnpj=dados.chave.slice(6,20);dados.numero=String(Number(dados.chave.slice(25,34)));dados.serie=dados.chave.slice(22,25);}
+  const emitente=texto.match(/RECEBEMOS D[EO]\s+(.+?)\s+OS?\s+(?:PRODUTOS|SERVI[ÇC]OS)/i)?.[1];
+  if(!dados.fornecedorNome&&emitente)dados.fornecedorNome=emitente.replace(/\s+/g,' ').trim();
+  const emissao=texto.match(/EMISS[ÃA]O\s*:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(emissao)dados.dataEmissao=`${emissao[3]}-${emissao[2]}-${emissao[1]}`;
   dados.totalNota=capturar(/(?:VALOR TOTAL DA NOTA|TOTAL DA NOTA|TOTAL A PAGAR|TOTAL)\s*[:=]?\s*R?\$?\s*([\d.]+,\d{2})/i);
   dados.totais={frete:capturar(/(?:VALOR DO )?FRETE\s*[:=]\s*R?\$?\s*([\d.]+,\d{2})/i),seguro:capturar(/SEGURO\s*[:=]\s*R?\$?\s*([\d.]+,\d{2})/i),despesas:capturar(/(?:DESPESAS(?: ACESS[OÓ]RIAS)?|OUTRAS DESPESAS)\s*[:=]\s*R?\$?\s*([\d.]+,\d{2})/i),desconto:capturar(/DESCONTO\s*[:=]\s*R?\$?\s*([\d.]+,\d{2})/i),outros:'0'};
   for(const [campo,label] of [['ipi','IPI'],['icmsSt','ICMS[ -]?ST'],['fcpSt','FCP[ -]?ST']] as const){

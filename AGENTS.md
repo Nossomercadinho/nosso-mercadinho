@@ -192,6 +192,8 @@ As quatro novas tabelas são privadas, com RLS e propriedade do papel do backend
 
 O catálogo da unidade mostra `preco_custo` como último custo; o saldo ponderado é retornado separadamente em `custo_medio`. Não sobrescrever o preço de venda na importação. O motor decimal canônico é `backend/src/domain/custo-real.ts`; o prebuild copia uma versão para `frontend/src/generated`, permitindo builds independentes dos serviços.
 
+PDFs textuais enviam `paginasPdf` com posições de texto para `ler-danfe-pdf.ts`; preservar colunas e páginas, sem reduzir DANFE tabular a uma linha simples. Cabeçalhos de continuação não substituem o quadro de totais. Número/série/CNPJ são obtidos da chave válida; `0 - ENTRADA` não é número fiscal. Fatores de embalagem podem vir de contagens explícitas na descrição, sempre com revisão. Reler documento já salvo não deve apagar a nova leitura na tela: atualizar o rascunho exige versão e justificativa, e entradas confirmadas são preservadas. PDFs reais de clientes e suas extrações ficam fora do Git; testes usam geometria e dados fictícios.
+
 ## 7. Desenvolvimento local
 
 Usar **Node.js 22.x**, com versão compatível com o Vite do projeto (22.12 ou superior). As dependências têm lockfiles separados; a raiz não é um workspace npm.

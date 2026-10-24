@@ -1,3 +1,4 @@
+import {lerDanfePdf} from '../domain/ler-danfe-pdf';
 import crypto from 'node:crypto';
 import { calcularCustoReal, compararCusto, decimal, ErroCusto } from '../domain/custo-real';
 import type { ConferenciaCusto } from '../domain/custo-real';
@@ -55,7 +56,7 @@ export async function conferirCustos(estado:ConferenciaCusto,lojaId:number){
 }
 
 export async function lerDocumento(body:any,lojaId:number){
-  const estado=body?.xml?lerXmlConferencia(body.xml):lerTextoConferencia(String(body?.texto||''),body?.origem==='PDF'?'PDF':'FOTO');
+  const estado=body?.xml?lerXmlConferencia(body.xml):body?.origem==='PDF'&&body?.paginasPdf?lerDanfePdf(body.paginasPdf,String(body.texto||'')):lerTextoConferencia(String(body?.texto||''),body?.origem==='PDF'?'PDF':'FOTO');
   return conferirCustos(estado,lojaId);
 }
 
@@ -106,7 +107,7 @@ export async function salvarConferencia(body:any,usuario:UsuarioAcesso,lojaId:nu
     }else{
       const identificador=conferencia.estado.chave?`NFE:${validarChaveNfe(conferencia.estado.chave)}`:`DOC:${crypto.createHash('sha256').update(docs.map(d=>d.sha256).sort().join(':')).digest('hex')}`;
       const existente=await get<any>('SELECT id,loja_id FROM compras_conferencias WHERE identificador=?',[identificador]);
-      if(existente){if(Number(existente.loja_id)!==lojaId)erro('Este documento já está registrado.',409);return abrirConferencia(existente.id,lojaId);}
+      if(existente){if(Number(existente.loja_id)!==lojaId)erro('Este documento já está registrado.',409);return {...await abrirConferencia(existente.id,lojaId),documentoJaRegistrado:true};}
       if(conferencia.estado.chave && await get('SELECT id FROM notas_entrada WHERE chave_nfe=?',[conferencia.estado.chave]))erro('A NF-e já está no histórico de entradas.',409);
       id=(await run(`INSERT INTO compras_conferencias(loja_id,local_estoque_id,usuario_criacao_id,identificador,origem,estado_json,original_json,atualizado_em) VALUES(?,?,?,?,?,?,?,?)`,[lojaId,conferencia.estado.localEstoqueId||null,usuario.id,identificador,conferencia.estado.origem,JSON.stringify(conferencia.estado),JSON.stringify(conferencia.estado),now])).lastID;
       for(const doc of docs)await run('INSERT INTO compras_documentos(conferencia_id,nome,mime,sha256,conteudo_base64) VALUES(?,?,?,?,?)',[id,doc.nome,doc.mime,doc.sha256,doc.base64]);
