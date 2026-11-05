@@ -5,6 +5,7 @@ import { useLoja } from '../contexts/LojaContext';
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -84,6 +85,7 @@ type Lancamento = {
 
   fornecedor_cpf_cnpj?: string | null;
 
+  loja_id?: number | null;
   loja_nome?: string | null;
 
   categoria_nome?: string | null;
@@ -258,7 +260,8 @@ function fetchAutenticado(
 }
 
 export default function Financeiro() {
-  const { lojaAtiva } = useLoja();
+  const { lojaAtiva, lojas: lojasAutorizadas, selecionarLoja } = useLoja();
+  const cargaFinanceiro = useRef(0);
   const idLojaAtiva = lojaAtiva ? String(lojaAtiva.id) : '';
   const usuario =
     useMemo<Usuario | null>(() => {
@@ -476,6 +479,19 @@ export default function Financeiro() {
   ] = useState('');
 
 
+  const [dataInicio, setDataInicio] = useState(() => hojeISO().slice(0, 7) + '-01');
+  const [dataFim, setDataFim] = useState(hojeISO);
+  const [filtroUnidade, setFiltroUnidade] = useState('');
+  const periodoInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
+
+  function definirPeriodo(dias?: number) {
+    const hoje = new Date();
+    if (dias === undefined) hoje.setDate(1);
+    else hoje.setDate(hoje.getDate() - dias + 1);
+    const inicio = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    setDataInicio(inicio); setDataFim(hojeISO());
+  }
+
   const lancamentosFiltrados =
     useMemo(() => {
       const texto =
@@ -533,6 +549,10 @@ export default function Financeiro() {
               filtroStatus;
 
           return (
+            !periodoInvalido &&
+            (!dataInicio || String(lancamento.data_vencimento).slice(0, 10) >= dataInicio) &&
+            (!dataFim || String(lancamento.data_vencimento).slice(0, 10) <= dataFim) &&
+            (!filtroUnidade || String(lancamento.loja_id) === filtroUnidade) &&
             correspondeBusca &&
             correspondeTipo &&
             correspondeStatus
@@ -541,6 +561,7 @@ export default function Financeiro() {
       );
     }, [
       lancamentos,
+      dataInicio, dataFim, filtroUnidade, periodoInvalido,
       busca,
       filtroTipo,
       filtroStatus,
@@ -548,26 +569,33 @@ export default function Financeiro() {
 
   const resumoVisual = useMemo(() => {
     const entradas = lancamentosFiltrados
-      .filter((item) => tipoVisualLancamento(item) === 'ENTRADA')
-      .reduce((total, item) => total + Number(item.valor_original || 0), 0);
+      .filter((item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA')
+      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0);
 
     const saidas = lancamentosFiltrados
-      .filter((item) => tipoVisualLancamento(item) === 'SAIDA')
-      .reduce((total, item) => total + Number(item.valor_original || 0), 0);
+      .filter((item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'SAIDA')
+      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0);
 
     return {
-      entradas,
-      saidas,
-      saldo: entradas - saidas,
+      entradas: entradas / 100,
+      saidas: saidas / 100,
+      saldo: (entradas - saidas) / 100,
       quantidadeEntradas: lancamentosFiltrados.filter(
-        (item) => tipoVisualLancamento(item) === 'ENTRADA'
+        (item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA'
       ).length,
       quantidadeSaidas: lancamentosFiltrados.filter(
-        (item) => tipoVisualLancamento(item) === 'SAIDA'
+        (item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'SAIDA'
       ).length,
       quantidade: lancamentosFiltrados.length,
     };
   }, [lancamentosFiltrados]);
+
+  const entradasPorUnidade = useMemo(() => lojasAutorizadas
+    .filter(loja => !filtroUnidade || String(loja.id) === filtroUnidade)
+    .map(loja => ({ ...loja, total: lancamentosFiltrados
+      .filter(item => Number(item.loja_id) === loja.id && item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA')
+      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0) / 100 })),
+    [lojasAutorizadas, filtroUnidade, lancamentosFiltrados]);
 
   /*
   |--------------------------------------------------------------------------
@@ -716,7 +744,7 @@ export default function Financeiro() {
 
   useEffect(() => {
     carregarTudo();
-  }, []);
+  }, [idLojaAtiva]);
 
   useEffect(() => {
     if (acessoOperacional) {
@@ -743,8 +771,8 @@ export default function Financeiro() {
         return;
       }
 
-      if (lojaAtiva) {
-        const sincronizacao = await sincronizarFechamentosFinanceiro(lojaAtiva.id);
+      for (const loja of acessoGerencial ? lojasAutorizadas : (lojaAtiva ? [lojaAtiva] : [])) {
+        const sincronizacao = await sincronizarFechamentosFinanceiro(loja.id);
         if (sincronizacao.conflitos.length) setErro('Há fechamentos com valores diferentes já lançados no Financeiro. Confira as datas antes de alterar.');
       }
 
@@ -870,34 +898,25 @@ export default function Financeiro() {
   }
 
   async function carregarLancamentos() {
+    const carga = ++cargaFinanceiro.current;
     try {
-      const parametros =
-      new URLSearchParams();
-
-      const resposta =
-        await fetchAutenticado(
-          `${API}/financeiro?${parametros.toString()}`
-        );
-
-      const dados =
-        await resposta.json();
-
-      if (dados.sucesso) {
-        setLancamentos(
-          dados.lancamentos || []
-        );
-      } else {
-        setErro(
-          dados.erro ||
-          'Erro ao carregar Financeiro.'
-        );
-      }
+      const lista: Lancamento[] = [];
+      let pagina: Lancamento[];
+      do {
+        const parametros = new URLSearchParams({ limite: '2000', offset: String(lista.length) });
+        if (acessoGerencial) parametros.set('consolidado', '1');
+        const resposta = await fetchAutenticado(`${API}/financeiro?${parametros}`);
+        const dados = await resposta.json();
+        if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro || 'Erro ao carregar Financeiro.');
+        pagina = dados.lancamentos || [];
+        lista.push(...pagina);
+      } while (pagina.length === 2000 && carga === cargaFinanceiro.current);
+      if (carga === cargaFinanceiro.current) setLancamentos(lista);
     } catch (error) {
-      console.error(error);
-
-      setErro(
-        'Não foi possível acessar o Financeiro.'
-      );
+      if (carga === cargaFinanceiro.current) {
+        setLancamentos([]);
+        setErro(error instanceof Error ? error.message : 'Não foi possível acessar o Financeiro.');
+      }
     }
   }
 
@@ -3158,6 +3177,26 @@ Os totais do Financeiro serão recalculados.`
           CARDS
       ====================================================== */}
 
+      <section className="financeiro-periodo" aria-label="Período e unidades">
+        <div><h2>Visão financeira</h2><p>Valores por vencimento ou data do fechamento. Cancelados não entram nos totais.</p></div>
+        <div className="financeiro-periodo-campos">
+          {acessoGerencial && <label>Unidades<select aria-label="Unidades do resumo" value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)}>
+            <option value="">Todas as unidades</option>
+            {lojasAutorizadas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
+          </select></label>}
+          <label>Data inicial<input aria-label="Data inicial" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} /></label>
+          <label>Data final<input aria-label="Data final" type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} /></label>
+        </div>
+        <div className="financeiro-periodo-atalhos">
+          <button type="button" onClick={() => definirPeriodo(1)}>Hoje</button>
+          <button type="button" onClick={() => definirPeriodo(7)}>Últimos 7 dias</button>
+          <button type="button" onClick={() => definirPeriodo()}>Este mês</button>
+          <button type="button" onClick={() => { setDataInicio(''); setDataFim(''); }}>Todo o período</button>
+        </div>
+        {periodoInvalido && <p role="alert">A data inicial deve ser anterior ou igual à data final.</p>}
+        {carregando && <p role="status">Atualizando valores…</p>}
+      </section>
+
       {acessoGerencial && (
         <div className="financeiro-cards financeiro-cards-modelo">
           <div className="financeiro-card entrada financeiro-card-modelo">
@@ -3166,7 +3205,7 @@ Os totais do Financeiro serão recalculados.`
               <span>Total de Entradas</span>
               <strong>{moeda(resumoVisual.entradas)}</strong>
               <small>{resumoVisual.quantidadeEntradas} lançamentos</small>
-              <small>Fechamento de Caixa</small>
+              <small>{filtroUnidade ? 'Unidade selecionada' : 'Todas as unidades autorizadas'}</small>
             </div>
           </div>
 
@@ -3201,6 +3240,13 @@ Os totais do Financeiro serão recalculados.`
           </div>
         </div>
       )}
+
+      {acessoGerencial && <section className="financeiro-unidades" aria-label="Entradas por unidade">
+        <h2>Entradas por unidade</h2>
+        <div className="financeiro-unidades-grid">{entradasPorUnidade.map(loja => <div key={loja.id}>
+          <span>{loja.nome}</span><strong>{moeda(loja.total)}</strong>
+        </div>)}</div>
+      </section>}
 
       {/* =====================================================
           FECHAMENTO DIÁRIO DO MERCADO ATIVO
@@ -4345,6 +4391,7 @@ Os totais do Financeiro serão recalculados.`
 
                     <td data-label="Ações">
                       <div className="financeiro-acoes-linha">
+                        {lancamento.loja_id && Number(lancamento.loja_id) !== lojaAtiva?.id ? <button type="button" className="financeiro-btn-secundario" onClick={() => selecionarLoja(Number(lancamento.loja_id))}>Abrir unidade</button> : <>
                         {lancamento.status ===
                           'PENDENTE' && (
                           <button
@@ -4427,6 +4474,7 @@ Os totais do Financeiro serão recalculados.`
                         >
                           Excluir
                         </button>}
+                      </>}
                       </div>
                     </td>
                   </tr>

@@ -368,6 +368,8 @@ router.get(
             ? String(req.query.busca)
             : undefined,
 
+        offset: req.query.offset ? Number(req.query.offset) : 0,
+
         limite:
           req.query.limite
             ? Number(req.query.limite)

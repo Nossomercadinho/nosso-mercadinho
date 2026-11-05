@@ -99,6 +99,16 @@ test('mercado ativo isola clientes, fornecedores, financeiro e NF-e mesmo para a
     financial2=await request('/financeiro',store2,'POST',{tipo:'SAIDA',fornecedorId:otherSupplier.id,descricao:'Despesa Bairro',valorOriginal:20,dataVencimento:'2026-10-15'},201);
     assert.deepEqual((await request('/financeiro',1)).lancamentos.map(f=>f.descricao),['Despesa Matriz']);
     assert.deepEqual((await request('/financeiro',store2)).lancamentos.map(f=>f.descricao),['Despesa Bairro']);
+    const todas = (await request('/financeiro?consolidado=1',store2)).lancamentos;
+    assert.equal(todas.length,2);
+    assert.deepEqual(new Set(todas.map(f=>Number(f.loja_id))),new Set([1,store2]));
+    assert.equal((await request('/financeiro?consolidado=1&lojaId=1',store2)).lancamentos.length,1);
+    assert.equal((await request('/financeiro?consolidado=1&dataInicio=2026-10-16',store2)).lancamentos.length,0);
+    assert.equal((await request('/financeiro?consolidado=1&dataInicio=2026-10-15&dataFim=2026-10-15',store2)).lancamentos.length,2);
+    const primeira = (await request('/financeiro?consolidado=1&limite=1',store2)).lancamentos;
+    const segunda = (await request('/financeiro?consolidado=1&limite=1&offset=1',store2)).lancamentos;
+    assert.equal(primeira.length,1); assert.equal(segunda.length,1); assert.notEqual(primeira[0].id,segunda[0].id);
+
     const id1=(await get("SELECT id FROM financeiro_lancamentos WHERE descricao='Despesa Matriz'")).id;
     await request(`/financeiro/${id1}`,store2,'GET',undefined,403);
     await request(`/financeiro/${id1}`,store2,'PATCH',{descricao:'Tentativa'},403);

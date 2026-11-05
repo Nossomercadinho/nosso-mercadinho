@@ -533,3 +533,17 @@
     border-radius: 14px;
   }
 }
+
+.financeiro-periodo, .financeiro-unidades { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; margin: 20px 0; }
+.financeiro-periodo h2, .financeiro-unidades h2 { font-size: 18px; margin: 0 0 8px; }
+.financeiro-periodo p { color: #64748b; font-size: 13px; }
+.financeiro-periodo-campos { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; }
+.financeiro-periodo-campos label { display: flex; flex: 1 1 180px; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.financeiro-periodo-campos input, .financeiro-periodo-campos select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #0f172a; }
+.financeiro-periodo-atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.financeiro-periodo-atalhos button { padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 20px; background: #f8fafc; cursor: pointer; color: #334155; }
+.financeiro-periodo-atalhos button:hover { background: #e2e8f0; }
+.financeiro-unidades-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+.financeiro-unidades-grid > div { background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.financeiro-unidades-grid span { font-size: 12px; color: #475569; }
+.financeiro-unidades-grid strong { font-size: 21px; color: #15803d; }
