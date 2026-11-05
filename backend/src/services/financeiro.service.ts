@@ -1170,6 +1170,7 @@ export async function listarLancamentosFinanceiros(
     dataFim?: string;
     busca?: string;
     limite?: number;
+    offset?: number;
   } = {}
 ) {
   const parametros: any[] = [];
@@ -1295,7 +1296,7 @@ export async function listarLancamentosFinanceiros(
       2000
     );
 
-  parametros.push(limite);
+  parametros.push(limite, Math.max(0, Math.floor(Number(filtros.offset) || 0)));
 
   const hoje =
     hojeISO();
@@ -1391,7 +1392,7 @@ export async function listarLancamentosFinanceiros(
         fl.data_vencimento ASC,
         fl.id DESC
 
-      LIMIT ?
+      LIMIT ? OFFSET ?
     `,
     parametros
   );
