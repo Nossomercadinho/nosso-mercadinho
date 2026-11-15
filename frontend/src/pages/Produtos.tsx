@@ -1,6 +1,7 @@
 import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import TabelaCustosSimples from '../components/TabelaCustosSimples';
 import Precificacao from '../components/Precificacao';
+import ImportarCustos from '../components/ImportarCustos';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import Icon from '../components/Icon';
@@ -55,6 +56,7 @@ export default function Produtos() {
   const { lojaAtiva } = useLoja();
   const [mostrarCustos,setMostrarCustos]=useState(false);
   const [mostrarPrecificacao, setMostrarPrecificacao] = useState(false);
+  const [mostrarImportacao, setMostrarImportacao] = useState(false);
   const [catalogoGeral, setCatalogoGeral] = useState(false);
   const [produtos, setProdutos] =
     useState<ProdutoBanco[]>([]);
@@ -797,6 +799,8 @@ export default function Produtos() {
       </div>
 
       <button type="button" className="secondary-button" onClick={() => setMostrarPrecificacao(v => !v)}>{mostrarPrecificacao ? 'Fechar precificação' : 'Precificação'}</button>
+      <button type="button" className="secondary-button" onClick={() => setMostrarImportacao(v => !v)}>{mostrarImportacao ? 'Fechar importação' : 'Importar produtos e custos'}</button>
+      {mostrarImportacao && lojaAtiva && <ImportarCustos key={lojaAtiva.id} lojaId={lojaAtiva.id} unidade={lojaAtiva.nome} onSalvo={() => { void carregarProdutosLoja(); void carregarProdutos(); }} />}
       {mostrarPrecificacao && <Precificacao key={lojaAtiva?.id} produtos={produtosLoja} unidade={lojaAtiva?.nome || 'Selecione uma unidade'} onAplicar={(id, preco) => {
         const produto = produtosLoja.find(p => p.id === id);
         if (produto) { editarProduto(produto); setPrecoVenda(preco); setMostrarPrecificacao(false); }
