@@ -2,6 +2,7 @@ import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import TabelaCustosSimples from '../components/TabelaCustosSimples';
 import Precificacao from '../components/Precificacao';
 import ImportarCustos from '../components/ImportarCustos';
+import PrecosPorUnidade from '../components/PrecosPorUnidade';
 import { apiFetch } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
 import Icon from '../components/Icon';
@@ -57,6 +58,7 @@ export default function Produtos() {
   const [mostrarCustos,setMostrarCustos]=useState(false);
   const [mostrarPrecificacao, setMostrarPrecificacao] = useState(false);
   const [mostrarImportacao, setMostrarImportacao] = useState(false);
+  const [mostrarPrecosUnidades, setMostrarPrecosUnidades] = useState(false);
   const [catalogoGeral, setCatalogoGeral] = useState(false);
   const [produtos, setProdutos] =
     useState<ProdutoBanco[]>([]);
@@ -800,6 +802,8 @@ export default function Produtos() {
 
       <button type="button" className="secondary-button" onClick={() => setMostrarPrecificacao(v => !v)}>{mostrarPrecificacao ? 'Fechar precificação' : 'Precificação'}</button>
       <button type="button" className="secondary-button" onClick={() => setMostrarImportacao(v => !v)}>{mostrarImportacao ? 'Fechar importação' : 'Importar produtos e custos'}</button>
+      <button type="button" className="secondary-button" onClick={() => setMostrarPrecosUnidades(v => !v)}>{mostrarPrecosUnidades ? 'Fechar preços por unidade' : 'Preços Matriz e Mercadinhos'}</button>
+      {mostrarPrecosUnidades && <PrecosPorUnidade onSalvo={() => { void carregarProdutosLoja(); void carregarProdutos(); }} />}
       {mostrarImportacao && lojaAtiva && <ImportarCustos key={lojaAtiva.id} lojaId={lojaAtiva.id} unidade={lojaAtiva.nome} onSalvo={() => { void carregarProdutosLoja(); void carregarProdutos(); }} />}
       {mostrarPrecificacao && <Precificacao key={lojaAtiva?.id} produtos={produtosLoja} unidade={lojaAtiva?.nome || 'Selecione uma unidade'} onAplicar={(id, preco) => {
         const produto = produtosLoja.find(p => p.id === id);
