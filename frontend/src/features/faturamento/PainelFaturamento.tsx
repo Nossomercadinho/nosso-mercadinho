@@ -127,15 +127,16 @@ export default function PainelFaturamento({ registros, unidades, ano, mes, inici
 
   return <div className="hist-dashboard">
     <header className="hist-dashboard-titulo">
-      <h2>Dashboard gerencial de faturamento</h2>
+      <h2>Visão geral do faturamento</h2>
       <p>{periodo} <span aria-hidden="true">·</span> {unidades.length} {unidades.length === 1 ? 'unidade' : 'unidades'}</p>
     </header>
 
     <div className="hist-indicadores hist-dashboard-indicadores">
-      <Indicador titulo="Faturamento do mês" valor={dinheiro(atual)} detalhe={nomeMes(mesReferencia)} />
+      <Indicador destaque titulo="Faturamento do mês" valor={dinheiro(atual)} detalhe={nomeMes(mesReferencia)} />
       <Indicador titulo="Acumulado no ano" valor={dinheiro(acumuladoAnual)} detalhe={String(anoReferencia) + ' até a competência final do recorte'} />
       <Indicador titulo="Média mensal" valor={dinheiro(media)} detalhe={mesesInformados.length + ' competências informadas no recorte'} />
       <Indicador titulo="Variação mensal" valor={crescimento === null ? '—' : variacaoPercentual.format(crescimento)}
+        tom={crescimento === null || crescimento === 0 ? undefined : crescimento > 0 ? 'alta' : 'queda'}
         detalhe={crescimento === null ? 'Sem base comparável no mês anterior' : comparaveis.length + ' unidades com dados nos dois meses'} />
       <Indicador titulo="Melhor mês" valor={dinheiro(melhor?.total ?? null)} detalhe={melhor ? nomeMes(melhor.i) : 'Sem fechamento no recorte'} />
       <Indicador titulo="Pior mês" valor={dinheiro(pior?.total ?? null)} detalhe={pior ? nomeMes(pior.i) : 'Sem fechamento no recorte'} />
@@ -145,22 +146,7 @@ export default function PainelFaturamento({ registros, unidades, ano, mes, inici
     </div>
 
     <div className="hist-dashboard-grade">
-      <section className="hist-painel" aria-label="Faturamento acumulado por unidade">
-        <h2>Faturamento acumulado por unidade</h2>
-        <div className="hist-dashboard-totais">
-          <div><span>Total consolidado</span><strong>{dinheiro(total)}</strong></div>
-          <div><span>Média mensal</span><strong>{dinheiro(media)}</strong></div>
-        </div>
-        <ul className="hist-dashboard-barras">
-          {porUnidade.map(u => <li key={u.unidade.id} style={{ '--cor-unidade': cor(u.unidade) } as CSSProperties}>
-            <div><span>{u.unidade.nome}</span><strong>{dinheiro(u.valor)}</strong>
-              <small>{u.valor === null || !total ? '—' : percentual.format(u.valor / total)}</small></div>
-            <div className="hist-dashboard-trilho" aria-hidden="true"><i style={{ width: ((u.valor ?? 0) / maiorUnidade * 100) + '%' }} /></div>
-          </li>)}
-        </ul>
-      </section>
-
-      <section className="hist-painel" aria-label="Evolução do faturamento">
+      <section className="hist-painel hist-dashboard-evolucao" aria-label="Evolução do faturamento">
         <div className="hist-dashboard-acoes">
           <h2>Evolução do faturamento</h2>
           <div role="group" aria-label="Escala do gráfico">
@@ -183,14 +169,16 @@ export default function PainelFaturamento({ registros, unidades, ano, mes, inici
               return <g key={passo}><line x1={margem} y1={py(marca)} x2={largura - 18} y2={py(marca)} />
                 <text x={margem - 9} y={py(marca) + 4} textAnchor="end">{'R$ ' + compacto.format(marca / 100)}</text></g>;
             })}
-            {grupos.map((g, i) => <text key={g.rotulo + i} x={px(i)} y={base + 24} textAnchor="middle">{g.rotulo}</text>)}
+            {serie.some(s => s.pontos[foco] !== null) &&
+              <line className="hist-dashboard-guia" x1={px(foco)} x2={px(foco)} y1={24} y2={base} />}
+            {grupos.map((g, i) => <text className={i === foco ? 'hist-dashboard-mes-ativo' : undefined} key={g.rotulo + i} x={px(i)} y={base + 24} textAnchor="middle">{g.rotulo}</text>)}
             {serie.map(s => {
               const caminho = s.pontos.map((v, i) => v === null ? ''
                 : (i > 0 && s.pontos[i - 1] !== null ? 'L' : 'M') + px(i) + ',' + py(v)).join(' ');
               return <g key={s.unidade.id} style={{ color: cor(s.unidade) }}>
                 <path d={caminho} fill="none" stroke="currentColor" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round" />
                 {s.pontos.map((v, i) => v === null ? null
-                  : <circle key={i} cx={px(i)} cy={py(v)} r={i === foco ? 5 : 3.5} fill="currentColor">
+                  : <circle key={i} cx={px(i)} cy={py(v)} r={i === foco ? 5 : 3.5} fill="currentColor" stroke="white" strokeWidth={i === foco ? 2 : 1.25}>
                       <title>{s.unidade.nome + ' · ' + grupos[i].titulo + ' · ' + reais(v)}</title>
                     </circle>)}
               </g>;
@@ -208,10 +196,33 @@ export default function PainelFaturamento({ registros, unidades, ano, mes, inici
           </li>)}
         </ul>
       </section>
+
+      <section className="hist-painel hist-dashboard-distribuicao" aria-label="Faturamento acumulado por unidade">
+        <h2>Faturamento acumulado por unidade</h2>
+        <div className="hist-dashboard-totais">
+          <div><span>Total consolidado</span><strong>{dinheiro(total)}</strong></div>
+          <div><span>Média mensal</span><strong>{dinheiro(media)}</strong></div>
+        </div>
+        <ul className="hist-dashboard-barras">
+          {porUnidade.map(u => <li key={u.unidade.id} style={{ '--cor-unidade': cor(u.unidade) } as CSSProperties}>
+            <div><span>{u.unidade.nome}</span><strong>{dinheiro(u.valor)}</strong>
+              <small>{u.valor === null || !total ? '—' : percentual.format(u.valor / total)}</small></div>
+            <div className="hist-dashboard-trilho" aria-hidden="true"><i style={{ width: ((u.valor ?? 0) / maiorUnidade * 100) + '%' }} /></div>
+          </li>)}
+        </ul>
+      </section>
     </div>
   </div>;
 }
 
-function Indicador({ titulo, valor, detalhe }: { titulo: string; valor: string; detalhe: string }) {
-  return <article><span>{titulo}</span><strong>{valor}</strong><small>{detalhe}</small></article>;
+function Indicador({ titulo, valor, detalhe, destaque, tom }: {
+  titulo: string;
+  valor: string;
+  detalhe: string;
+  destaque?: boolean;
+  tom?: 'alta' | 'queda';
+}) {
+  return <article className={destaque ? 'hist-indicador-destaque' : undefined}>
+    <span>{titulo}</span><strong data-tom={tom}>{valor}</strong><small>{detalhe}</small>
+  </article>;
 }
