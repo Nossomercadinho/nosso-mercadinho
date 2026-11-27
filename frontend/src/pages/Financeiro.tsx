@@ -492,12 +492,22 @@ export default function Financeiro() {
     setDataInicio(inicio); setDataFim(hojeISO());
   }
 
+  const lancamentosDoPeriodo = useMemo(() => {
+    if (periodoInvalido) return [];
+    return lancamentos.filter(item => {
+      const data = String(item.data_vencimento).slice(0, 10);
+      return (!dataInicio || data >= dataInicio) &&
+        (!dataFim || data <= dataFim) &&
+        (!filtroUnidade || String(item.loja_id) === filtroUnidade);
+    });
+  }, [lancamentos, dataInicio, dataFim, filtroUnidade, periodoInvalido]);
+
   const lancamentosFiltrados =
     useMemo(() => {
       const texto =
         normalizarPesquisa(busca);
 
-      return lancamentos.filter(
+      return lancamentosDoPeriodo.filter(
         (lancamento) => {
           const conteudoPesquisavel =
             [
@@ -549,10 +559,6 @@ export default function Financeiro() {
               filtroStatus;
 
           return (
-            !periodoInvalido &&
-            (!dataInicio || String(lancamento.data_vencimento).slice(0, 10) >= dataInicio) &&
-            (!dataFim || String(lancamento.data_vencimento).slice(0, 10) <= dataFim) &&
-            (!filtroUnidade || String(lancamento.loja_id) === filtroUnidade) &&
             correspondeBusca &&
             correspondeTipo &&
             correspondeStatus
@@ -560,42 +566,64 @@ export default function Financeiro() {
         }
       );
     }, [
-      lancamentos,
-      dataInicio, dataFim, filtroUnidade, periodoInvalido,
+      lancamentosDoPeriodo,
       busca,
       filtroTipo,
       filtroStatus,
     ]);
 
   const resumoVisual = useMemo(() => {
-    const entradas = lancamentosFiltrados
-      .filter((item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA')
-      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0);
+    let entradas = 0;
+    let saidas = 0;
+    let aPagar = 0;
+    let quantidadeEntradas = 0;
+    let quantidadeSaidas = 0;
+    let quantidadeAPagar = 0;
+    const entradasPorLoja = new Map<number, number>();
 
-    const saidas = lancamentosFiltrados
-      .filter((item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'SAIDA')
-      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0);
+    for (const item of lancamentosDoPeriodo) {
+      if (item.status === 'CANCELADO') continue;
+
+      const original = Math.round(Number(item.valor_original || 0) * 100);
+      const baixado = Math.round(Number(item.valor_baixado || 0) * 100);
+      const liquidado = item.status === 'PAGO' || item.status === 'RECEBIDO';
+      const realizado = liquidado && baixado === 0 ? original : baixado;
+
+      if (tipoVisualLancamento(item) === 'ENTRADA') {
+        if (realizado > 0) {
+          entradas += realizado;
+          quantidadeEntradas++;
+          const lojaId = Number(item.loja_id);
+          entradasPorLoja.set(lojaId, (entradasPorLoja.get(lojaId) ?? 0) + realizado);
+        }
+      } else {
+        if (realizado > 0) {
+          saidas += realizado;
+          quantidadeSaidas++;
+        }
+        const emAberto = original - realizado;
+        if (!liquidado && emAberto > 0) {
+          aPagar += emAberto;
+          quantidadeAPagar++;
+        }
+      }
+    }
 
     return {
       entradas: entradas / 100,
       saidas: saidas / 100,
+      aPagar: aPagar / 100,
       saldo: (entradas - saidas) / 100,
-      quantidadeEntradas: lancamentosFiltrados.filter(
-        (item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA'
-      ).length,
-      quantidadeSaidas: lancamentosFiltrados.filter(
-        (item) => item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'SAIDA'
-      ).length,
-      quantidade: lancamentosFiltrados.length,
+      quantidadeEntradas,
+      quantidadeSaidas,
+      quantidadeAPagar,
+      entradasPorLoja,
     };
-  }, [lancamentosFiltrados]);
+  }, [lancamentosDoPeriodo]);
 
-  const entradasPorUnidade = useMemo(() => lojasAutorizadas
+  const entradasPorUnidade = lojasAutorizadas
     .filter(loja => !filtroUnidade || String(loja.id) === filtroUnidade)
-    .map(loja => ({ ...loja, total: lancamentosFiltrados
-      .filter(item => Number(item.loja_id) === loja.id && item.status !== 'CANCELADO' && tipoVisualLancamento(item) === 'ENTRADA')
-      .reduce((total, item) => total + Math.round(Number(item.valor_original || 0) * 100), 0) / 100 })),
-    [lojasAutorizadas, filtroUnidade, lancamentosFiltrados]);
+    .map(loja => ({ ...loja, total: (resumoVisual.entradasPorLoja.get(loja.id) ?? 0) / 100 }));
 
   /*
   |--------------------------------------------------------------------------
@@ -3178,7 +3206,7 @@ Os totais do Financeiro serão recalculados.`
       ====================================================== */}
 
       <section className="financeiro-periodo" aria-label="Período e unidades">
-        <div><h2>Visão financeira</h2><p>Valores por vencimento ou data do fechamento. Cancelados não entram nos totais.</p></div>
+        <div><h2>Visão financeira</h2><p>Selecione o período por vencimento ou data de fechamento.</p></div>
         <div className="financeiro-periodo-campos">
           {acessoGerencial && <label>Unidades<select aria-label="Unidades do resumo" value={filtroUnidade} onChange={e => setFiltroUnidade(e.target.value)}>
             <option value="">Todas as unidades</option>
@@ -3202,7 +3230,7 @@ Os totais do Financeiro serão recalculados.`
           <div className="financeiro-card entrada financeiro-card-modelo">
             <div className="financeiro-card-icone entrada">↑</div>
             <div>
-              <span>Total de Entradas</span>
+              <span>Entradas recebidas</span>
               <strong>{moeda(resumoVisual.entradas)}</strong>
               <small>{resumoVisual.quantidadeEntradas} lançamentos</small>
               <small>{filtroUnidade ? 'Unidade selecionada' : 'Todas as unidades autorizadas'}</small>
@@ -3212,37 +3240,36 @@ Os totais do Financeiro serão recalculados.`
           <div className="financeiro-card saida financeiro-card-modelo">
             <div className="financeiro-card-icone saida">↓</div>
             <div>
-              <span>Total de Saídas</span>
+              <span>Saídas pagas</span>
               <strong>{moeda(resumoVisual.saidas)}</strong>
               <small>{resumoVisual.quantidadeSaidas} lançamentos</small>
-              <small>Compras, pagamentos, despesas, etc.</small>
             </div>
           </div>
 
           <div className="financeiro-card financeiro-card-modelo saldo">
             <div className="financeiro-card-icone saldo">▥</div>
             <div>
-              <span>Saldo do Período</span>
+              <span>Saldo realizado</span>
               <strong className={resumoVisual.saldo >= 0 ? 'positivo' : 'negativo'}>
                 {moeda(resumoVisual.saldo)}
               </strong>
-              <small>Entradas − Saídas</small>
+              <small>Recebimentos − pagamentos</small>
             </div>
           </div>
 
           <div className="financeiro-card financeiro-card-modelo">
             <div className="financeiro-card-icone total">☷</div>
             <div>
-              <span>Total de Lançamentos</span>
-              <strong>{resumoVisual.quantidade}</strong>
-              <small>no período exibido</small>
+              <span>Contas a pagar</span>
+              <strong>{moeda(resumoVisual.aPagar)}</strong>
+              <small>{resumoVisual.quantidadeAPagar} contas em aberto</small>
             </div>
           </div>
         </div>
       )}
 
-      {acessoGerencial && <section className="financeiro-unidades" aria-label="Entradas por unidade">
-        <h2>Entradas por unidade</h2>
+      {acessoGerencial && <section className="financeiro-unidades" aria-label="Recebimentos por unidade">
+        <h2>Recebimentos por unidade</h2>
         <div className="financeiro-unidades-grid">{entradasPorUnidade.map(loja => <div key={loja.id}>
           <span>{loja.nome}</span><strong>{moeda(loja.total)}</strong>
         </div>)}</div>
