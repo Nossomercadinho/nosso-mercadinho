@@ -51,3 +51,41 @@
 .hist-comparativo > div { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
 .hist-trilho { grid-column: 1 / -1; background: #eff5f1; border-radius: 4px; }
 .hist-trilho i { display: block; height: 8px; background: #2e886d; border-radius: 4px; }
+
+/* Dashboard do histórico */
+.hist-dashboard { display: grid; gap: 16px; min-width: 0; }
+.hist-dashboard-titulo { border-radius: 14px; padding: 18px 20px; background: #195242; color: #fff; }
+.hist-dashboard-titulo h2 { margin: 0 0 4px; color: inherit; font-size: clamp(1.2rem, 2.5vw, 1.65rem); }
+.hist-dashboard-titulo p { margin: 0; color: #e1f0e8; }
+.hist-dashboard-indicadores article { border-top: 3px solid #2e886d; }
+.hist-dashboard-grade { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.35fr); align-items: start; gap: 14px; }
+.hist-dashboard-grade > section { min-width: 0; }
+.hist-dashboard-totais { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 16px; }
+.hist-dashboard-totais div { display: grid; padding: 10px; background: #eff5f1; border-radius: 8px; gap: 3px; }
+.hist-dashboard-totais span { color: #426257; font-size: .85rem; }
+.hist-dashboard-barras, .hist-dashboard-legenda { margin: 0; padding: 0; list-style: none; }
+.hist-dashboard-barras { display: grid; gap: 14px; }
+.hist-dashboard-barras li > div:first-child { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 7px; }
+.hist-dashboard-barras small { color: #496358; min-width: 42px; text-align: right; }
+.hist-dashboard-trilho { background: #edf2ef; height: 10px; margin-top: 5px; border-radius: 5px; overflow: hidden; }
+.hist-dashboard-trilho i { display: block; height: 100%; background: var(--cor-unidade); border-radius: 5px; }
+.hist-dashboard-acoes { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.hist-dashboard-acoes h2 { margin: 0; }
+.hist-dashboard-acoes div { display: flex; gap: 4px; }
+.historico-faturamento .hist-dashboard-acoes button[aria-pressed=true] { background: #195242; color: #fff; border-color: #195242; }
+.hist-dashboard-svg { overflow-x: auto; }
+.hist-dashboard-svg svg { display: block; width: 100%; height: auto; }
+.hist-dashboard-svg text { fill: #496358; font-size: 12px; }
+.hist-dashboard-svg line { stroke: #dce7e0; }
+.hist-dashboard-detalhe { display: grid; gap: 4px; width: max-content; max-width: 100%; margin: 8px 0; font-size: .9rem; }
+.hist-dashboard-legenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr)); gap: 6px; }
+.hist-dashboard-legenda li { display: grid; padding-left: 8px; border-left: 3px solid var(--cor-unidade); font-size: .86rem; }
+.hist-dashboard-legenda span { color: #426257; }
+.hist-filtros .hist-filtro-periodo { display: flex; align-items: center; }
+@media (max-width: 1100px) {
+  .hist-dashboard-grade { grid-template-columns: 1fr; }
+}
+@media (max-width: 440px) {
+  .hist-dashboard-barras li > div:first-child { grid-template-columns: 1fr auto; }
+  .hist-dashboard-barras li > div:first-child span { grid-column: 1 / -1; }
+}
