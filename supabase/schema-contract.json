@@ -4086,6 +4086,66 @@
           "referencedColumn": "id"
         }
       ]
+    },
+    {
+      "name": "faturamento_mensal",
+      "identityColumn": "id",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "loja_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ano",
+          "type": "integer",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "mes",
+          "type": "integer",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valor_centavos",
+          "type": "bigint",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "atualizado_por",
+          "type": "bigint",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "atualizado_em",
+          "type": "text",
+          "nullable": false,
+          "default": "to_char(timezone('UTC', CURRENT_TIMESTAMP), 'YYYY-MM-DD HH24:MI:SS')"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "column": "loja_id",
+          "table": "lojas",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "atualizado_por",
+          "table": "usuarios",
+          "referencedColumn": "id"
+        }
+      ]
     }
   ]
 }

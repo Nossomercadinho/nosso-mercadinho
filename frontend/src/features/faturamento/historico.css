@@ -1,0 +1,53 @@
+.historico-faturamento {
+  display: grid;
+  gap: 16px;
+  color: #172e26;
+}
+.hist-cabecalho, .hist-acoes, .hist-filtros, .hist-edicao {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.hist-cabecalho { justify-content: space-between; }
+.hist-cabecalho h1 { margin: 8px 0 0; font-size: clamp(1.4rem, 3vw, 2rem); }
+.historico-faturamento button, .historico-faturamento select, .historico-faturamento input:not([type=checkbox]) {
+  border: 1px solid #c4d5ce;
+  border-radius: 6px;
+  background: white;
+  color: inherit;
+  padding: 8px 10px;
+  font: inherit;
+}
+.historico-faturamento button { cursor: pointer; }
+.historico-faturamento button:disabled { cursor: default; opacity: .55; }
+.historico-faturamento .hist-primario { background: #195242; color: white; border-color: #195242; }
+.hist-painel, .hist-indicadores article {
+  border: 1px solid #dce7e0;
+  border-radius: 10px;
+  background: white;
+  padding: 16px;
+}
+.hist-painel h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.hist-painel p { margin: 0 0 12px; color: #4d655a; }
+.hist-filtros label, .hist-edicao label { display: grid; gap: 4px; font-weight: 550; }
+.hist-filtros fieldset { display: flex; gap: 10px; flex-wrap: wrap; border: 1px solid #dce7e0; border-radius: 6px; }
+.hist-filtros fieldset label { display: flex; align-items: center; }
+.hist-edicao h2 { width: 100%; }
+.hist-indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 12px; }
+.hist-indicadores article { display: grid; gap: 6px; }
+.hist-indicadores strong { font-size: 1.3rem; }
+.hist-indicadores small { color: #4d655a; }
+.hist-rolagem { overflow-x: auto; }
+.hist-rolagem table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.hist-rolagem td, .hist-rolagem th { padding: 8px 10px; border-bottom: 1px solid #e7eee9; text-align: left; white-space: nowrap; }
+.hist-rolagem th { background: #eff5f1; }
+.hist-grafico { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.historico-faturamento .hist-barra { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; text-align: left; }
+.hist-barra span { grid-column: 1 / -1; font-size: .85rem; }
+.hist-barra i { display: block; height: 8px; background: #2e886d; border-radius: 3px; }
+.hist-barra[aria-pressed=true] { outline: 2px solid #195242; }
+.hist-comparativo { display: grid; gap: 10px; }
+.hist-comparativo > div { display: grid; grid-template-columns: 1fr auto; gap: 4px; }
+.hist-trilho { grid-column: 1 / -1; background: #eff5f1; border-radius: 4px; }
+.hist-trilho i { display: block; height: 8px; background: #2e886d; border-radius: 4px; }
