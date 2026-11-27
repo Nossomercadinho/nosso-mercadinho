@@ -114,6 +114,21 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS faturamento_mensal (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loja_id INTEGER NOT NULL REFERENCES lojas(id),
+      ano INTEGER NOT NULL CHECK (ano BETWEEN 1900 AND 9999),
+      mes INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
+      valor_centavos INTEGER NOT NULL CHECK (valor_centavos BETWEEN 0 AND 999999999999),
+      atualizado_por INTEGER REFERENCES usuarios(id),
+      atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (loja_id, ano, mes)
+    )
+  `);
+
+  db.run('CREATE INDEX IF NOT EXISTS faturamento_mensal_ano_mes_idx ON faturamento_mensal (ano, mes)');
+
   /*
   |--------------------------------------------------------------------------
   | LOCAIS DE ESTOQUE

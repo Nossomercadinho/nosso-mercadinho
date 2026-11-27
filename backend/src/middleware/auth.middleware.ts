@@ -131,6 +131,7 @@ export function permissoesDaRota(req: Request): string[] {
   if (caminho.startsWith('/api/vendas')) return leitura && /^\/api\/vendas\/\d+$/.test(caminho) ? ['pdv', 'vendas'] : ['pdv'];
   if (caminho.startsWith('/api/clientes-prazo')) return leitura ? ['clientes', 'pdv'] : ['clientes'];
   if (caminho.startsWith('/api/fechamento-diario')) return ['fechamento'];
+  if (caminho.startsWith('/api/financeiro/faturamento-mensal')) return ['financeiro'];
   if (caminho.startsWith('/api/financeiro/resumo')) return ['financeiro'];
   if (caminho.startsWith('/api/financeiro/fluxo-caixa')) return ['financeiro'];
   if (caminho.startsWith('/api/financeiro/fechamentos-caixa')) return ['financeiro', 'fechamento'];
@@ -165,7 +166,7 @@ export async function autorizarEscopoLoja(req: RequestAutenticada, res: Response
     || (req.method === 'GET' && /^\/api\/lojas\/?$/.test(caminho))
     // O consolidado é somente leitura e mantém todas as lojas autorizadas
     // do usuário, em vez de restringir o resumo à loja operacional ativa.
-    || (req.method === 'GET' && /^\/api\/financeiro(?:\/resumo)?\/?$/.test(caminho) && req.query.consolidado === '1')
+    || (req.method === 'GET' && /^\/api\/financeiro(?:\/(?:resumo|faturamento-mensal))?\/?$/.test(caminho) && req.query.consolidado === '1')
     || (req.method === 'GET' && /^\/api\/fornecedores(?:\/resumo)?\/?$/.test(caminho) && req.query.consolidado === '1');
   let usuarioEscopo = req.usuario;
   const headerLoja = req.headers['x-loja-id'];

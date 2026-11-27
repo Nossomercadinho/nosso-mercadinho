@@ -17,6 +17,9 @@
   "dependencies": {
     "@tesseract.js-data/por": "1.0.0",
     "decimal.js": "10.6.0",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "pdfjs-dist": "6.4.299",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

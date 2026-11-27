@@ -67,10 +67,10 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     await run('INSERT INTO usuarios (nome,email,senha,perfil) VALUES (?,?,?,?)', [role, `${role.toLowerCase()}@teste.local`, hash, role]);
   }
   await run('INSERT INTO executores (codigo,nome) VALUES (?,?)', ['TESTE', 'Executor de teste']);
-  const request = async (route, token, method = 'GET', body, expected = 200) => {
+  const request = async (route, token, method = 'GET', body, expected = 200, headers = {}) => {
     const response = await fetch(base + route, {
       method,
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json', ...headers, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     const data = await response.json();
@@ -236,6 +236,33 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     assert.equal((await get('SELECT COUNT(*) AS n FROM financeiro_lancamentos WHERE numero_documento = ?', [`FECHAMENTO-DIARIO-${f2}`])).n, 1);
     await request('/api/financeiro/sincronizar-fechamentos', admin, 'POST', { lojaId: loja3 });
     assert.equal((await request(`/api/financeiro/resumo?lojaId=${loja3}`, admin)).resumo.entradasMes, 234.56);
+  });
+
+  await t.test('histórico por competência atualiza o valor sem alterar registros operacionais', async () => {
+    const lerTudo = (sql) => new Promise((resolve, reject) => db.all(sql, (erro, linhas) => erro ? reject(erro) : resolve(linhas)));
+    const tabelas = ['financeiro_lancamentos', 'financeiro_baixas', 'financeiro_historico',
+      'contas_receber', 'contas_receber_recebimentos', 'caixas_sessoes', 'fechamentos_diarios'];
+    const estado = () => Promise.all(tabelas.map(tabela => lerTudo(`SELECT * FROM ${tabela} ORDER BY id`)));
+    const antes = await estado();
+    const resumoAntes = await request('/api/financeiro/resumo?consolidado=1', admin);
+    const fluxoAntes = await request('/api/financeiro/fluxo-caixa?dataInicio=2026-10-01&dataFim=2026-12-31', admin);
+    const rota = '/api/financeiro/faturamento-mensal';
+    const valor = { lojaId: 1, ano: 2026, mes: 12, centavos: 123456, anterior: null };
+    const headers = { 'X-Loja-Id': '1' };
+
+    await request(rota + '?ano=2026&consolidado=1', cashier, 'GET', null, 403);
+    await request(rota, admin, 'PUT', valor, 403);
+    await request(rota, admin, 'PUT', { ...valor, mes: 13 }, 400, headers);
+    await request(rota, admin, 'PUT', valor, 200, headers);
+    await request(rota, admin, 'PUT', valor, 200, headers);
+    await request(rota, admin, 'PUT', { ...valor, centavos: 200 }, 409, headers);
+    await request(rota, admin, 'PUT', { ...valor, centavos: 200, anterior: valor.centavos }, 200, headers);
+
+    const consulta = await request(rota + '?ano=2027&consolidado=1', admin, 'GET', null, 200, headers);
+    assert.deepEqual(consulta.registros, [{ lojaId: 1, ano: 2026, mes: 12, centavos: 200 }]);
+    assert.deepEqual(await estado(), antes);
+    assert.deepEqual(await request('/api/financeiro/resumo?consolidado=1', admin), resumoAntes);
+    assert.deepEqual(await request('/api/financeiro/fluxo-caixa?dataInicio=2026-10-01&dataFim=2026-12-31', admin), fluxoAntes);
   });
 
 });

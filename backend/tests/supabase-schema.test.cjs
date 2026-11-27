@@ -59,9 +59,9 @@ test('contrato PostgreSQL contém as tabelas e colunas criadas pelo runtime SQLi
 });
 
 test('schema preserva identidades, códigos, flags e isolamento da Data API', () => {
-  assert.equal(contract.tables.length, 42);
-  assert.equal(contract.tables.reduce((n, t) => n + t.columns.length, 0), 474);
-  assert.equal(contract.tables.reduce((n, t) => n + t.foreignKeys.length, 0), 104);
+  assert.equal(contract.tables.length, 43);
+  assert.equal(contract.tables.reduce((n, t) => n + t.columns.length, 0), 481);
+  assert.equal(contract.tables.reduce((n, t) => n + t.foreignKeys.length, 0), 106);
   const created = new Set();
   for (const table of contract.tables) {
     assert.ok(baseline.includes(`CREATE TABLE IF NOT EXISTS public."${table.name}"`));
@@ -75,7 +75,7 @@ test('schema preserva identidades, códigos, flags e isolamento da Data API', ()
       if (/^(ean|cpf|cpf_cnpj|cnpj|cep|ncm|cest|xml)$|_json$|_em$|^data_/.test(column.name)) assert.equal(column.type, 'text', `${table.name}.${column.name} perderia sua representação original.`);
     }
   }
-  assert.equal((baseline.match(/DEFERRABLE INITIALLY DEFERRED/g) || []).length, 104);
+  assert.equal((baseline.match(/DEFERRABLE INITIALLY DEFERRED/g) || []).length, 106);
   assert.match(security, /ENABLE ROW LEVEL SECURITY/);
   assert.match(security, /REVOKE ALL PRIVILEGES ON TABLE public\.%I FROM PUBLIC/);
   assert.match(security, /'anon', 'authenticated', 'service_role'/);

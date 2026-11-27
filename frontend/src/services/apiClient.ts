@@ -25,7 +25,8 @@ export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   return fetch(input, { ...init, headers }).then(response=>{
     const metodo=String(init.method||(input instanceof Request?input.method:'GET')).toUpperCase();
     const leituraAuxiliar=/\/financeiro\/sincronizar-fechamentos$|\/nfe\/custos\/(?:ler|conferir|chave)$/.test(path);
-    if(response.ok&&!['GET','HEAD','OPTIONS'].includes(metodo)&&/^\/api\/(?:produtos|estoque|financeiro|nfe|clientes-prazo|fornecedores|fechamento-diario|vendas|lojas)(?:\/|$)/.test(path)&&!leituraAuxiliar)avisarAlteracao();
+    const faturamentoHistorico = path === '/api/financeiro/faturamento-mensal';
+    if(response.ok&&!faturamentoHistorico&&!['GET','HEAD','OPTIONS'].includes(metodo)&&/^\/api\/(?:produtos|estoque|financeiro|nfe|clientes-prazo|fornecedores|fechamento-diario|vendas|lojas)(?:\/|$)/.test(path)&&!leituraAuxiliar)avisarAlteracao();
     return response;
   });
 }

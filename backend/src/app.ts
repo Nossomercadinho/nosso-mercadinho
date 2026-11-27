@@ -17,6 +17,7 @@ import fornecedoresRoutes from './routes/fornecedores.routes';
 import authRoutes from './routes/auth.routes';
 import nfeRoutes from './routes/nfe.routes';
 import financeiroRoutes from './routes/financeiro.routes';
+import faturamentoMensalRoutes from './routes/faturamento-mensal.routes';
 import executoresRoutes from './routes/executores.routes';
 import vendasRoutes from './routes/vendas.routes';
 import clientesPrazoRoutes from './routes/clientes-prazo.routes';
@@ -187,6 +188,14 @@ app.use(
   autorizarModuloRota,
   autorizarEscopoLoja,
   nfeRoutes
+);
+
+app.use(
+  '/api/financeiro/faturamento-mensal',
+  autenticarToken,
+  autorizarModuloRota,
+  autorizarEscopoLoja,
+  faturamentoMensalRoutes
 );
 
 app.use(

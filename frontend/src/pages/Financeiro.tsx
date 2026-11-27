@@ -1,3 +1,4 @@
+import HistoricoFaturamento from '../features/faturamento/HistoricoFaturamento';
 import {useDadosCompartilhados} from '../hooks/useDadosCompartilhados';
 import { apiFetch, sincronizarFechamentosFinanceiro } from '../services/apiClient';
 import ResponsiveFilters from '../components/ResponsiveFilters';
@@ -260,6 +261,13 @@ function fetchAutenticado(
 }
 
 export default function Financeiro() {
+  const [verHistorico, setVerHistorico] = useState(false);
+  return verHistorico
+    ? <HistoricoFaturamento voltar={() => setVerHistorico(false)} />
+    : <MovimentacoesFinanceiras abrirHistorico={() => setVerHistorico(true)} />;
+}
+
+function MovimentacoesFinanceiras({ abrirHistorico }: { abrirHistorico: () => void }) {
   const { lojaAtiva, lojas: lojasAutorizadas, selecionarLoja } = useLoja();
   const cargaFinanceiro = useRef(0);
   const idLojaAtiva = lojaAtiva ? String(lojaAtiva.id) : '';
@@ -2573,6 +2581,11 @@ Os totais do Financeiro serão recalculados.`
         </div>
 
         <div className="financeiro-header-acoes">
+          {acessoGerencial && (
+            <button type="button" className="financeiro-btn-fechamento" onClick={abrirHistorico}>
+              Histórico de Faturamento Mensal
+            </button>
+          )}
           {acessoGerencial && (
             <button
               type="button"
