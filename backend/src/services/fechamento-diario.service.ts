@@ -190,12 +190,76 @@ export async function buscarFechamento(data: string, lojaId: number) {
 
 export async function salvarFechamento(dados: any) {
   await garantirEstruturaFechamento();
-  return transacaoCaixa(() => gravarFechamento(dados));
+  return transacaoCaixa(async () => {
+    const atual = await buscarFechamento(dados.dataReferencia, dados.lojaId);
+    const fechamento = await gravarFechamento(dados, atual);
+    const historicoMensal = await registrarFaturamentoMensal(fechamento, atual, dados.usuarioId);
+    return { ...fechamento, historicoMensal };
+  });
 }
 
-async function gravarFechamento(dados: any) {
+async function registrarFaturamentoMensal(
+  fechamento: { dataReferencia: string; lojaId: number; totalInformado: number | string },
+  anterior: { totalInformado: number | string } | undefined,
+  usuarioId: number | null,
+) {
+  const { dataReferencia, lojaId } = fechamento;
+  const competencia = dataReferencia.slice(0, 7);
+  if (competencia < '2026-11') return null;
 
-  const atual = await buscarFechamento(dados.dataReferencia, dados.lojaId);
+  const [ano, mes] = competencia.split('-').map(Number);
+  const fimDoMes = new Date(Date.UTC(ano, mes, 0));
+  const ultimoDia = fimDoMes.toISOString().slice(0, 10);
+  while (fimDoMes.getUTCDay() === 0 || fimDoMes.getUTCDay() === 6) {
+    fimDoMes.setUTCDate(fimDoMes.getUTCDate() - 1);
+  }
+  const ultimoDiaUtil = fimDoMes.toISOString().slice(0, 10);
+  const fechamentoFinal = dataReferencia === ultimoDiaUtil;
+  if (!fechamentoFinal && !await get(
+    'SELECT id FROM fechamentos_diarios WHERE loja_id = ? AND data_referencia = ?',
+    [lojaId, ultimoDiaUtil],
+  )) return null;
+
+  const totais = await all<{ total: number | string }>(
+    `SELECT total_informado AS total FROM fechamentos_diarios
+     WHERE loja_id = ? AND data_referencia BETWEEN ? AND ?`,
+    [lojaId, `${competencia}-01`, ultimoDia],
+  );
+  const centavos = totais.reduce((soma, { total }) => soma + Math.round(Number(total) * 100), 0);
+  if (!Number.isSafeInteger(centavos) || centavos < 0 || centavos > 999_999_999_999) {
+    return 'valor-invalido';
+  }
+
+  const agora = new Date().toISOString();
+  const totalAnterior = centavos - Math.round(Number(fechamento.totalInformado) * 100)
+    + Math.round(Number(anterior?.totalInformado ?? 0) * 100);
+  if (anterior || !fechamentoFinal) {
+    // Preserva valores lançados manualmente que divergem da soma anterior.
+    const atualizado = await run(
+      `UPDATE faturamento_mensal
+       SET valor_centavos = ?, atualizado_por = ?, atualizado_em = ?
+       WHERE loja_id = ? AND ano = ? AND mes = ? AND valor_centavos = ?`,
+      [centavos, usuarioId, agora, lojaId, ano, mes, totalAnterior],
+    );
+    if (atualizado.changes) return 'registrado';
+  }
+  if (!fechamentoFinal) {
+    const existente = await get(
+      'SELECT id FROM faturamento_mensal WHERE loja_id = ? AND ano = ? AND mes = ?',
+      [lojaId, ano, mes],
+    );
+    return existente ? 'ja-informado' : null;
+  }
+  const resultado = await run(
+    `INSERT INTO faturamento_mensal (loja_id, ano, mes, valor_centavos, atualizado_por, atualizado_em)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (loja_id, ano, mes) DO NOTHING`,
+    [lojaId, ano, mes, centavos, usuarioId, agora],
+  );
+  return resultado.changes ? 'registrado' : 'ja-informado';
+}
+
+async function gravarFechamento(dados: any, atual: Awaited<ReturnType<typeof buscarFechamento>>) {
   if (atual && String(dados.motivoAlteracao || '').trim().length < 5) {
     throw new ErroValidacaoFechamento('Para alterar um fechamento já salvo, informe um motivo com pelo menos 5 caracteres.');
   }

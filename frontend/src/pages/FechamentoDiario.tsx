@@ -165,7 +165,13 @@ export default function FechamentoDiario() {
       });
       const d = await r.json();
       if (!r.ok || !d.sucesso) throw new Error(d.erro || 'Erro ao salvar.');
-      setMensagem(`Fechamento diário de ${lojaAtiva.nome} salvo.`);
+      const avisosMensais: Record<string, string> = {
+        registrado: ' O total do mês foi registrado no Histórico de Faturamento.',
+        'ja-informado': ' Esta unidade já tem um valor no Histórico de Faturamento. Confira o total mensal após a alteração.',
+        'valor-invalido': ' Confira o total mensal antes de registrá-lo no Histórico de Faturamento.',
+      };
+      const avisoMensal = avisosMensais[d.fechamento?.historicoMensal] || '';
+      setMensagem(`Fechamento diário de ${lojaAtiva.nome} salvo.${avisoMensal}`);
       setJaExiste(true);
       await carregarHistorico();
     } catch (e: any) {

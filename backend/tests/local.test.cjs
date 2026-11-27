@@ -265,4 +265,36 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     assert.deepEqual(await request('/api/financeiro/fluxo-caixa?dataInicio=2026-10-01&dataFim=2026-12-31', admin), fluxoAntes);
   });
 
+  await t.test('último dia útil alimenta o histórico mensal da unidade a partir de novembro de 2026', async () => {
+    const fechar = (dataReferencia, dinheiro, motivoAlteracao) =>
+      request('/api/fechamento-diario', cashier, 'PUT', { dataReferencia, dinheiro, motivoAlteracao });
+    const faturamento = mes => get(
+      'SELECT valor_centavos FROM faturamento_mensal WHERE loja_id = 1 AND ano = 2026 AND mes = ?', [mes],
+    );
+    await fechar('2026-10-31', 75);
+    assert.equal(await faturamento(10), undefined);
+    const { total } = await get(
+      `SELECT COALESCE(SUM(ROUND(total_informado * 100)), 0) AS total
+       FROM fechamentos_diarios WHERE loja_id = 1 AND data_referencia BETWEEN '2026-11-01' AND '2026-11-28'`,
+    );
+    await fechar('2026-11-29', 24.32);
+    assert.equal(await faturamento(11), undefined);
+    assert.equal((await fechar('2026-11-30', 10.03)).fechamento.historicoMensal, 'registrado');
+    assert.equal((await faturamento(11)).valor_centavos, total + 3435);
+    await fechar('2026-11-29', 25.32, 'Correção do valor');
+    assert.equal((await faturamento(11)).valor_centavos, total + 3535);
+    assert.equal((await fechar('2026-12-31', 99)).fechamento.historicoMensal, 'ja-informado');
+    assert.equal((await faturamento(12)).valor_centavos, 200);
+
+    const fevereiro = () => get(
+      'SELECT valor_centavos FROM faturamento_mensal WHERE loja_id = 1 AND ano = 2027 AND mes = 2',
+    );
+    await fechar('2027-02-25', 10);
+    assert.equal(await fevereiro(), undefined);
+    assert.equal((await fechar('2027-02-26', 15)).fechamento.historicoMensal, 'registrado');
+    assert.equal((await fevereiro()).valor_centavos, 2500);
+    await fechar('2027-02-28', 12);
+    assert.equal((await fevereiro()).valor_centavos, 3700);
+  });
+
 });
