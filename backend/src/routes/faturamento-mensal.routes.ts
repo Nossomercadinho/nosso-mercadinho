@@ -4,6 +4,8 @@ import type { RequestAutenticada } from '../middleware/auth.middleware';
 import { lojaPermitida } from '../services/acessos.service';
 import { escopoLojaSql } from '../services/escopo-lojas.service';
 
+import { sincronizarFaturamentoMensal } from '../services/fechamento-diario.service';
+
 const router = Router();
 const limiteCentavos = 999_999_999_999;
 
@@ -11,12 +13,18 @@ function inteiroEntre(valor: unknown, minimo: number, maximo: number): valor is 
   return typeof valor === 'number' && Number.isSafeInteger(valor) && valor >= minimo && valor <= maximo;
 }
 
-router.get('/', (req: RequestAutenticada, res, next) => {
+router.get('/', async (req: RequestAutenticada, res, next) => {
   const ano = typeof req.query.ano === 'string' && /^\d{4}$/.test(req.query.ano)
     ? Number(req.query.ano)
     : NaN;
   if (!inteiroEntre(ano, 1900, 9999)) {
     return res.status(400).json({ sucesso: false, erro: 'Informe um ano entre 1900 e 9999.' });
+  }
+
+  try {
+    await sincronizarFaturamentoMensal(ano, req.usuario!.id);
+  } catch (erro) {
+    return next(erro);
   }
 
   db.all(

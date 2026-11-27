@@ -25,11 +25,19 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
   });
   let logs = '';
   let db;
-  const child = spawn(process.execPath, ['-r', require.resolve('ts-node/register/transpile-only'), path.join(root, 'src/app.ts')], {
+  const clock = path.join(temp, 'clock.cjs');
+  fs.writeFileSync(clock, `
+    process.on('message', iso => {
+      require('node:test').mock.timers.reset();
+      if (iso) require('node:test').mock.timers.enable({ apis: ['Date'], now: new Date(iso) });
+      process.send('clock');
+    });
+  `);
+  const child = spawn(process.execPath, ['-r', clock, '-r', require.resolve('ts-node/register/transpile-only'), path.join(root, 'src/app.ts')], {
     cwd: temp,
     env: { ...process.env, DB_CLIENT: "sqlite", DATABASE_URL: "", PORT: String(port), JWT_SECRET: randomBytes(32).toString('hex'), TS_NODE_PROJECT: path.join(root, 'tsconfig.json') },
     windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
   child.stdout.on('data', data => { logs += data; });
   child.stderr.on('data', data => { logs += data; });
@@ -265,36 +273,49 @@ test('instalação nova e fluxos operacionais', { timeout: 60000 }, async t => {
     assert.deepEqual(await request('/api/financeiro/fluxo-caixa?dataInicio=2026-10-01&dataFim=2026-12-31', admin), fluxoAntes);
   });
 
-  await t.test('último dia útil alimenta o histórico mensal da unidade a partir de novembro de 2026', async () => {
+  await t.test('histórico mensal aguarda o próximo dia útil após o fechamento', async () => {
+    let caixaAutenticado, adminAutenticado;
+    const ajustarRelogio = async iso => {
+      const resposta = once(child, 'message');
+      child.send(iso);
+      const [confirmacao] = await resposta;
+      assert.equal(confirmacao, 'clock');
+      caixaAutenticado = (await request('/api/auth/login', null, 'POST', { email: 'caixa@teste.local', senha: password })).token;
+      adminAutenticado = (await request('/api/auth/login', null, 'POST', { email: 'administrador@teste.local', senha: password })).token;
+    };
     const fechar = (dataReferencia, dinheiro, motivoAlteracao) =>
-      request('/api/fechamento-diario', cashier, 'PUT', { dataReferencia, dinheiro, motivoAlteracao });
-    const faturamento = mes => get(
-      'SELECT valor_centavos FROM faturamento_mensal WHERE loja_id = 1 AND ano = 2026 AND mes = ?', [mes],
+      request('/api/fechamento-diario', caixaAutenticado, 'PUT', { dataReferencia, dinheiro, motivoAlteracao });
+    const historico = ano => request(
+      `/api/financeiro/faturamento-mensal?ano=${ano}&consolidado=1`, adminAutenticado,
     );
-    await fechar('2026-10-31', 75);
-    assert.equal(await faturamento(10), undefined);
+    const valor = (registros, ano, mes) => registros.find(r => r.lojaId === 1 && r.ano === ano && r.mes === mes)?.centavos;
     const { total } = await get(
       `SELECT COALESCE(SUM(ROUND(total_informado * 100)), 0) AS total
        FROM fechamentos_diarios WHERE loja_id = 1 AND data_referencia BETWEEN '2026-11-01' AND '2026-11-28'`,
     );
-    await fechar('2026-11-29', 24.32);
-    assert.equal(await faturamento(11), undefined);
-    assert.equal((await fechar('2026-11-30', 10.03)).fechamento.historicoMensal, 'registrado');
-    assert.equal((await faturamento(11)).valor_centavos, total + 3435);
-    await fechar('2026-11-29', 25.32, 'Correção do valor');
-    assert.equal((await faturamento(11)).valor_centavos, total + 3535);
-    assert.equal((await fechar('2026-12-31', 99)).fechamento.historicoMensal, 'ja-informado');
-    assert.equal((await faturamento(12)).valor_centavos, 200);
 
-    const fevereiro = () => get(
-      'SELECT valor_centavos FROM faturamento_mensal WHERE loja_id = 1 AND ano = 2027 AND mes = 2',
-    );
+    await ajustarRelogio('2026-12-01T02:59:59Z'); // 30/11 em São Paulo.
+    await fechar('2026-10-31', 75);
+    await fechar('2026-11-29', 24.32);
+    assert.equal((await fechar('2026-11-30', 10.03)).fechamento.historicoMensal, 'aguardando');
+    assert.equal(valor((await historico(2026)).registros, 2026, 11), undefined);
+    await ajustarRelogio('2026-12-01T03:00:00Z');
+    assert.equal(valor((await historico(2026)).registros, 2026, 10), undefined);
+    assert.equal(valor((await historico(2026)).registros, 2026, 11), total + 3435);
+    await fechar('2026-11-29', 25.32, 'Correção do valor');
+    assert.equal(valor((await historico(2026)).registros, 2026, 11), total + 3535);
+
+    await ajustarRelogio('2027-01-04T03:00:00Z');
+    assert.equal((await fechar('2026-12-31', 99)).fechamento.historicoMensal, 'ja-informado');
+    assert.equal(valor((await historico(2027)).registros, 2026, 12), 200);
+
+    await ajustarRelogio('2027-02-28T15:00:00Z');
     await fechar('2027-02-25', 10);
-    assert.equal(await fevereiro(), undefined);
-    assert.equal((await fechar('2027-02-26', 15)).fechamento.historicoMensal, 'registrado');
-    assert.equal((await fevereiro()).valor_centavos, 2500);
+    assert.equal((await fechar('2027-02-26', 15)).fechamento.historicoMensal, 'aguardando');
     await fechar('2027-02-28', 12);
-    assert.equal((await fevereiro()).valor_centavos, 3700);
+    assert.equal(valor((await historico(2027)).registros, 2027, 2), undefined);
+    await ajustarRelogio('2027-03-01T03:00:00Z');
+    assert.equal(valor((await historico(2027)).registros, 2027, 2), 3700);
   });
 
 });

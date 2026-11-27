@@ -166,6 +166,7 @@ export default function FechamentoDiario() {
       const d = await r.json();
       if (!r.ok || !d.sucesso) throw new Error(d.erro || 'Erro ao salvar.');
       const avisosMensais: Record<string, string> = {
+        aguardando: ' O total do mês ficará disponível para lançamento no histórico a partir do próximo dia útil.',
         registrado: ' O total do mês foi registrado no Histórico de Faturamento.',
         'ja-informado': ' Esta unidade já tem um valor no Histórico de Faturamento. Confira o total mensal após a alteração.',
         'valor-invalido': ' Confira o total mensal antes de registrá-lo no Histórico de Faturamento.',

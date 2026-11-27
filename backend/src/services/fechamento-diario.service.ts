@@ -1,6 +1,7 @@
 import db from '../database/database';
 import { integrarFechamentoFinanceiro } from './fechamento-financeiro.service';
 import { transacaoCaixa } from './caixas.service';
+import { escopoLojaSql } from './escopo-lojas.service';
 
 export class ErroValidacaoFechamento extends Error {}
 
@@ -198,6 +199,51 @@ export async function salvarFechamento(dados: any) {
   });
 }
 
+const dataOperacional = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+function datasDaCompetencia(ano: number, mes: number) {
+  const data = new Date(Date.UTC(ano, mes, 0));
+  const iso = () => data.toISOString().slice(0, 10);
+  const diaUtil = () => data.getUTCDay() !== 0 && data.getUTCDay() !== 6
+    && !['01-01', '05-01', '11-02'].includes(iso().slice(5));
+  const ultimoDia = iso();
+  while (!diaUtil()) data.setUTCDate(data.getUTCDate() - 1);
+  const ultimoDiaUtil = iso();
+  do {
+    data.setUTCDate(data.getUTCDate() + 1);
+  } while (!diaUtil());
+  return { ultimoDia, ultimoDiaUtil, dataLancamento: iso() };
+}
+
+export async function sincronizarFaturamentoMensal(ano: number, usuarioId: number, agora = new Date()) {
+  const hoje = dataOperacional.format(agora);
+  const competencias = [
+    { ano: ano - 1, mes: 12 },
+    ...Array.from({ length: 12 }, (_, i) => ({ ano, mes: i + 1 })),
+  ];
+  await transacaoCaixa(async () => {
+    for (const competencia of competencias) {
+      const { ano, mes } = competencia;
+      if (ano < 2026 || (ano === 2026 && mes < 11)) continue;
+      const { ultimoDia, ultimoDiaUtil, dataLancamento } = datasDaCompetencia(ano, mes);
+      if (hoje < dataLancamento) break;
+      await run(
+        `INSERT INTO faturamento_mensal (loja_id, ano, mes, valor_centavos, atualizado_por, atualizado_em)
+         SELECT f.loja_id, ?, ?, CAST(SUM(ROUND(f.total_informado * 100)) AS BIGINT), ?, ?
+         FROM fechamentos_diarios f
+         JOIN lojas l ON l.id = f.loja_id AND l.ativo = 1
+         JOIN fechamentos_diarios final ON final.loja_id = f.loja_id AND final.data_referencia = ?
+         WHERE f.data_referencia BETWEEN ? AND ? AND ${escopoLojaSql('f.loja_id')}
+           AND NOT EXISTS (SELECT 1 FROM faturamento_mensal m WHERE m.loja_id = f.loja_id AND m.ano = ? AND m.mes = ?)
+         GROUP BY f.loja_id
+         HAVING SUM(ROUND(f.total_informado * 100)) BETWEEN 0 AND 999999999999
+         ON CONFLICT (loja_id, ano, mes) DO NOTHING`,
+        [ano, mes, usuarioId, agora.toISOString(), ultimoDiaUtil, `${ultimoDia.slice(0, 7)}-01`, ultimoDia, ano, mes],
+      );
+    }
+  });
+}
+
 async function registrarFaturamentoMensal(
   fechamento: { dataReferencia: string; lojaId: number; totalInformado: number | string },
   anterior: { totalInformado: number | string } | undefined,
@@ -208,12 +254,10 @@ async function registrarFaturamentoMensal(
   if (competencia < '2026-11') return null;
 
   const [ano, mes] = competencia.split('-').map(Number);
-  const fimDoMes = new Date(Date.UTC(ano, mes, 0));
-  const ultimoDia = fimDoMes.toISOString().slice(0, 10);
-  while (fimDoMes.getUTCDay() === 0 || fimDoMes.getUTCDay() === 6) {
-    fimDoMes.setUTCDate(fimDoMes.getUTCDate() - 1);
+  const { ultimoDia, ultimoDiaUtil, dataLancamento } = datasDaCompetencia(ano, mes);
+  if (dataOperacional.format(new Date()) < dataLancamento) {
+    return dataReferencia === ultimoDiaUtil ? 'aguardando' : null;
   }
-  const ultimoDiaUtil = fimDoMes.toISOString().slice(0, 10);
   const fechamentoFinal = dataReferencia === ultimoDiaUtil;
   if (!fechamentoFinal && !await get(
     'SELECT id FROM fechamentos_diarios WHERE loja_id = ? AND data_referencia = ?',
