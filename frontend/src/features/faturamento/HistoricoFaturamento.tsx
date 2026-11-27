@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useDadosCompartilhados } from '../../hooks/useDadosCompartilhados';
+import PainelFaturamento, { lerCompetencia, pertenceAoGrupo } from './PainelFaturamento';
+import type { Grupo } from './PainelFaturamento';
 import { useLoja } from '../../contexts/LojaContext';
 import { apiFetch } from '../../services/apiClient';
 import { analisar, meses, reais, repasses, soma, unidadeEmAtividade, valorEmCentavos, variacao } from './modelo';
@@ -20,7 +23,11 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
   const [ano, setAno] = useState(2026);
   const [mes, setMes] = useState(0);
   const [excluidas, setExcluidas] = useState<number[]>([]);
-  const [dados, setDados] = useState<{ ano: number; registros: Registro[] }>();
+  const [grupo, setGrupo] = useState<Grupo>('todas');
+  const [personalizado, setPersonalizado] = useState(false);
+  const [inicioPersonalizado, setInicioPersonalizado] = useState('2026-01');
+  const [fimPersonalizado, setFimPersonalizado] = useState('2026-12');
+  const [dados, setDados] = useState<{ chave: string; registros: Registro[] }>();
   const [versao, setVersao] = useState(0);
   const [erroConsulta, setErroConsulta] = useState('');
   const [mensagem, setMensagem] = useState('');
@@ -28,25 +35,45 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
   const [edicao, setEdicao] = useState<{ lojaId: number; ano: number; mes: number; texto: string; anterior: number | null }>();
   const [salvando, setSalvando] = useState(false);
   const [exportando, setExportando] = useState(false);
-  const registros = dados?.ano === ano ? dados.registros : null;
-  const selecionadas = lojas.filter(loja => !excluidas.includes(loja.id));
+  const inicio = personalizado ? lerCompetencia(inicioPersonalizado) : ano * 12 + (mes ? mes - 1 : 0);
+  const fim = personalizado ? lerCompetencia(fimPersonalizado) : ano * 12 + (mes ? mes - 1 : 11);
+  const anoMaximo = anoAtual() + 1;
+  const periodoValido = inicio !== null && fim !== null && inicio <= fim
+    && inicio >= 2020 * 12 && fim < (anoMaximo + 1) * 12;
+  const anosConsulta = new Set([ano - 1, ano]);
+  if (periodoValido && inicio !== null && fim !== null) {
+    for (let a = Math.floor(inicio / 12) - 1; a <= Math.floor(fim / 12); a++) anosConsulta.add(a);
+  }
+  const chaveConsulta = [...anosConsulta].sort((a, b) => a - b).join(',');
+  const registros = dados?.chave === chaveConsulta ? dados.registros : null;
+  const lojasDoGrupo = lojas.filter(loja => pertenceAoGrupo(loja, grupo));
+  const selecionadas = lojasDoGrupo.filter(loja => !excluidas.includes(loja.id));
   const analise = analisar(registros ?? [], selecionadas, ano);
   const mesesExibidos = analise.porMes.filter(m => !mes || m.mes === mes);
   const repasseEnergia = repasses(registros ?? [], selecionadas, ano, mes);
   const anos = useMemo(() => Array.from({ length: Math.max(anoAtual() + 1, ano) - 2019 }, (_, i) => 2020 + i), [ano]);
 
+  useDadosCompartilhados(() => { if (!salvando) setVersao(v => v + 1); });
+
   useEffect(() => {
+    if (salvando) return;
     const controller = new AbortController();
-    apiFetch(`${endpoint}?ano=${ano}&consolidado=1`, { signal: controller.signal })
-      .then(async resposta => {
-        const conteudo = await resposta.json();
-        if (!resposta.ok || !conteudo.sucesso) throw new Error(conteudo.erro || 'Falha ao consultar o histórico.');
-        setDados({ ano, registros: conteudo.registros });
-        setErroConsulta('');
-      })
-      .catch((falha: Error) => { if (!controller.signal.aborted) setErroConsulta(falha.message); });
+    void Promise.all(chaveConsulta.split(',').map(async anoConsulta => {
+      const resposta = await apiFetch(endpoint + '?ano=' + anoConsulta + '&consolidado=1', { signal: controller.signal });
+      const conteudo = await resposta.json();
+      if (!resposta.ok || !conteudo.sucesso) throw new Error(conteudo.erro || 'Falha ao consultar o histórico.');
+      return conteudo.registros as Registro[];
+    })).then(listas => {
+      if (controller.signal.aborted) return;
+      const unicos = new Map<string, Registro>();
+      for (const r of listas.flat()) unicos.set([r.lojaId, r.ano, r.mes].join('/'), r);
+      setDados({ chave: chaveConsulta, registros: [...unicos.values()] });
+      setErroConsulta('');
+    }).catch((falha: Error) => {
+      if (!controller.signal.aborted) setErroConsulta(falha.message);
+    });
     return () => controller.abort();
-  }, [ano, versao]);
+  }, [chaveConsulta, versao, salvando]);
 
   function editar(lojaId: number, mesEdicao: number) {
     if (!registros || salvando) return;
@@ -86,7 +113,7 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
         throw new Error(retorno.erro || 'Falha ao salvar o faturamento.');
       }
       const salvo: Registro = retorno.registro;
-      setDados(atual => atual?.ano === salvo.ano ? {
+      setDados(atual => atual?.chave === chaveConsulta ? {
         ...atual,
         registros: [...atual.registros.filter(r => r.lojaId !== salvo.lojaId || r.ano !== salvo.ano || r.mes !== salvo.mes), salvo],
       } : atual);
@@ -148,7 +175,6 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
     }
   }
 
-  const maximo = Math.max(1, ...analise.porMes.map(m => m.total ?? 0));
   const pronto = registros != null && selecionadas.length > 0 && !erroConsulta;
 
   return <div className="historico-faturamento">
@@ -170,12 +196,32 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
         <option value={0}>Todos os meses</option>
         {meses.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
       </select></label>
+      <label>Tipo de unidade<select value={grupo} onChange={e => setGrupo(e.target.value as Grupo)}>
+        <option value="todas">Todas as unidades</option>
+        <option value="fisico">Mercado físico</option>
+        <option value="condominios">Condomínios</option>
+      </select></label>
+      <label className="hist-filtro-periodo"><input type="checkbox" checked={personalizado}
+        onChange={e => {
+          setInicioPersonalizado(ano + '-' + String(mes || 1).padStart(2, '0'));
+          setFimPersonalizado(ano + '-' + String(mes || 12).padStart(2, '0'));
+          setPersonalizado(e.target.checked);
+        }} />Período personalizado</label>
+      {personalizado && <>
+        <label>Competência inicial<input type="month" min="2020-01" max={anoMaximo + '-12'}
+          value={inicioPersonalizado} onChange={e => setInicioPersonalizado(e.target.value)} /></label>
+        <label>Competência final<input type="month" min="2020-01" max={anoMaximo + '-12'}
+          value={fimPersonalizado} onChange={e => setFimPersonalizado(e.target.value)} /></label>
+      </>}
       <fieldset><legend>Unidades na análise</legend>
-        {lojas.map(loja => <label key={loja.id}><input type="checkbox" checked={!excluidas.includes(loja.id)}
+        <button type="button" disabled={lojasDoGrupo.every(l => !excluidas.includes(l.id))}
+          onClick={() => setExcluidas(atuais => atuais.filter(id => !lojasDoGrupo.some(l => l.id === id)))}>Selecionar todas</button>
+        {lojasDoGrupo.map(loja => <label key={loja.id}><input type="checkbox" checked={!excluidas.includes(loja.id)}
           onChange={e => setExcluidas(atuais => e.target.checked ? atuais.filter(id => id !== loja.id) : [...atuais, loja.id])} />{loja.nome}</label>)}
       </fieldset>
     </section>
 
+    {!periodoValido && <p role="alert">Selecione um período válido, com início anterior ou igual ao fim.</p>}
     {erroConsulta && <p role="alert">{erroConsulta} <button onClick={() => setVersao(v => v + 1)}>Tentar novamente</button></p>}
     {!registros && !erroConsulta && <p role="status">Carregando faturamento…</p>}
     {registros && !selecionadas.length && <p>Selecione pelo menos uma unidade para analisar.</p>}
@@ -195,36 +241,10 @@ export default function HistoricoFaturamento({ voltar }: { voltar: () => void })
     </form>}
 
     {pronto && <>
-      <div className="hist-indicadores">
-        <article><span>Faturamento anual informado</span><strong>{exibicao(analise.total)}</strong><small>{analise.mesesConfirmados} meses com dados</small></article>
-        <article><span>Projeção anual</span><strong>{exibicao(analise.projecao)}</strong><small>{analise.unidadesProjetadas} de {selecionadas.length} unidades com dados</small></article>
-        <article><span>Maior faturamento mensal</span><strong>{exibicao(analise.melhor?.total)}</strong><small>{analise.melhor?.nome ?? '—'}</small></article>
-        <article><span>Menor faturamento mensal</span><strong>{exibicao(analise.pior?.total)}</strong><small>{analise.pior?.nome ?? '—'}</small></article>
-      </div>
-
-      <section className="hist-painel">
-        <h2>Evolução mensal consolidada</h2>
-        <div className="hist-grafico" aria-label="Evolução mensal consolidada">{analise.porMes.map(m =>
-          <button type="button" className="hist-barra" aria-pressed={mes === m.mes} key={m.mes}
-            aria-label={`${m.nome}: ${exibicao(m.total)}`} onClick={() => setMes(mes === m.mes ? 0 : m.mes)}>
-            <span>{m.total == null ? '—' : reais(m.total)}</span>
-            <i style={{ width: `${(m.total ?? 0) / maximo * 100}%` }} /><b>{m.nome.slice(0, 3)}</b>
-          </button>)}</div>
-      </section>
-
-      <section className="hist-painel">
-        <h2>Comparativo entre unidades</h2>
-        <div className="hist-comparativo">{analise.porUnidade.map(u => {
-          const valor = mes ? mesesExibidos[0].linhas.find(l => l.unidade.id === u.unidade.id)?.atual?.centavos : u.total;
-          const max = Math.max(1, ...(mes
-            ? mesesExibidos[0].linhas.map(l => l.atual?.centavos ?? 0)
-            : analise.porUnidade.map(l => l.total ?? 0)));
-          return <div key={u.unidade.id}>
-            <span>{u.unidade.nome}</span><strong>{exibicao(valor)}</strong>
-            <div className="hist-trilho" aria-hidden="true"><i style={{ width: `${(valor ?? 0) / max * 100}%` }} /></div>
-          </div>;
-        })}</div>
-      </section>
+      {periodoValido && inicio !== null && fim !== null &&
+        <PainelFaturamento key={chaveConsulta + ':' + inicio + ':' + fim} registros={registros ?? []}
+          unidades={selecionadas} ano={ano} mes={mes} inicio={inicio} fim={fim} personalizado={personalizado} />}
+      {personalizado && <p>As tabelas e exportações abaixo usam o ano e o mês dos filtros de competência.</p>}
 
       <Tabela tabela={resumoUnidades} detalhe="A projeção soma ao realizado a média de cada unidade por mês ainda sem valor durante sua operação. A Maison iniciou em 15/08/2026." />
       <Tabela tabela={consolidado} detalhe="A variação usa os totais cadastrados em cada mês. Meses com cobertura diferente podem refletir unidades a mais ou a menos." />
